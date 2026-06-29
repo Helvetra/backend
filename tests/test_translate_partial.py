@@ -261,3 +261,62 @@ class TestPartialErrorHandling:
         body = response.json()
         assert body["success"] is False
         assert "code" in body["error"] and "message" in body["error"]
+
+
+class TestPartialSourceEcho:
+    """A trailing parenthetical echoing the source is dropped; real ones stay."""
+
+    def test_source_echo_gloss_stripped(self, client: TestClient, httpx_mock: HTTPXMock):
+        httpx_mock.add_response(
+            json=mock_translation_response("Die Seen sind atemberaubend. (The lakes are stunning.)")
+        )
+
+        response = client.post(
+            "/api/v1/translate/partial",
+            json={
+                "segment": "The lakes are stunning.",
+                "source_lang": "en",
+                "target_lang": "de",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["data"]["translation"] == "Die Seen sind atemberaubend."
+
+    def test_legitimate_parenthetical_preserved(
+        self, client: TestClient, httpx_mock: HTTPXMock
+    ):
+        # The parenthetical does not echo the source, so it must stay.
+        httpx_mock.add_response(
+            json=mock_translation_response("Ich mag es wirklich (sehr).")
+        )
+
+        response = client.post(
+            "/api/v1/translate/partial",
+            json={
+                "segment": "I really like it",
+                "source_lang": "en",
+                "target_lang": "de",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["data"]["translation"] == "Ich mag es wirklich (sehr)."
+
+
+def test_strip_source_echo_unit():
+    """Direct checks on the echo stripper's precision."""
+    from app.services.translation import _strip_source_echo
+
+    # Exact echo (punctuation/case ignored) is stripped.
+    assert (
+        _strip_source_echo("Die Seen sind schön. (The lakes are stunning)", "The lakes are stunning.")
+        == "Die Seen sind schön."
+    )
+    # A non-matching parenthetical is preserved.
+    assert (
+        _strip_source_echo("Ich mag es (sehr).", "I like it")
+        == "Ich mag es (sehr)."
+    )
+    # No parenthetical: unchanged.
+    assert _strip_source_echo("Hallo Welt", "Hello world") == "Hallo Welt"

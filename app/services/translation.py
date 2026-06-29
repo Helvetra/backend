@@ -586,6 +586,28 @@ def _strip_marker_tags(text: str) -> str:
     return _TRANSLATE_TAG_PATTERN.sub("", text)
 
 
+# A trailing "(...)" the model occasionally appends to a segment translation.
+_TRAILING_PAREN_PATTERN = re.compile(r"\s*\(([^()]*)\)\s*$")
+
+
+def _normalize_echo(text: str) -> str:
+    """Lowercase and keep only alphanumerics, for comparing a gloss to its source."""
+    return re.sub(r"[^0-9a-z]+", "", text.casefold())
+
+
+def _strip_source_echo(translation: str, source: str) -> str:
+    """
+    Drop a trailing parenthetical that merely echoes the source segment. The
+    model sometimes glosses a sentence as "Translation (original)"; with the
+    source in hand for partial translation we can remove that high-confidence
+    case without touching legitimate parentheticals.
+    """
+    match = _TRAILING_PAREN_PATTERN.search(translation)
+    if match and _normalize_echo(match.group(1)) == _normalize_echo(source):
+        return translation[: match.start()].rstrip()
+    return translation
+
+
 async def _attempt_segment(
     segment: str,
     context_before: str,
@@ -603,6 +625,7 @@ async def _attempt_segment(
 
     translation = strip_wrapper_tags(raw_content)
     translation = _strip_marker_tags(translation).strip()
+    translation = _strip_source_echo(translation, segment)
     translation = apply_swiss_orthography(translation, target_lang)
     # Validate against the segment only — the context was not translated.
     _validate_output(segment, translation)
