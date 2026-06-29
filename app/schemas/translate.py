@@ -31,6 +31,22 @@ class TranslateRequest(BaseModel):
     )
 
 
+class PartialTranslateRequest(BaseModel):
+    """Request to translate a single segment using surrounding text as context."""
+
+    # The one segment to translate. Sanity ceiling only; the per-request tier
+    # limit is enforced in the route against this length.
+    segment: str = Field(..., min_length=1, max_length=50_000)
+    # Surrounding context, not translated and not charged. Capped for safety.
+    context_before: str = Field(default="", max_length=50_000)
+    context_after: str = Field(default="", max_length=50_000)
+    # Partial translation needs an explicit source; "auto" is rejected in the route.
+    source_lang: str = Field(..., min_length=2, max_length=4)
+    target_lang: str = Field(..., min_length=2, max_length=3)
+    formality: Literal["informal", "formal", "auto"] = Field(default="auto")
+    dialect: SwissDialect | None = Field(default=None)
+
+
 class TranslateResponse(BaseModel):
     """Translation response with result or error."""
 
