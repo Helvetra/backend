@@ -306,3 +306,55 @@ def test_strip_source_echo_unit():
     )
     # No parenthetical: unchanged.
     assert _strip_source_echo("Hallo Welt", "Hello world") == "Hallo Welt"
+
+
+class TestPartialFormality:
+    """The chosen register must survive a differently-toned context."""
+
+    def test_formality_reminder_unit(self):
+        from app.services.translation import get_formality_reminder
+
+        de_informal = get_formality_reminder("de", "informal")
+        assert "du/ihr" in de_informal and "Sie" in de_informal
+        assert "informal" in de_informal
+        # Formal picks the opposite forms.
+        assert "Sie" in get_formality_reminder("de", "formal")
+        # No T-V distinction or auto -> no reminder.
+        assert get_formality_reminder("en", "informal") == ""
+        assert get_formality_reminder("de", "auto") == ""
+
+    def test_partial_with_context_sends_register_reminder(
+        self, client: TestClient, httpx_mock: HTTPXMock
+    ):
+        """With context + an explicit register, the final reminder is in the
+        system prompt so a formal-sounding context can't flip the tone."""
+        httpx_mock.add_response(json=mock_translation_response("Kannst du das schicken?"))
+
+        client.post(
+            "/api/v1/translate/partial",
+            json={
+                "segment": "Can you send this?",
+                "context_before": "Dear Sir or Madam. ",
+                "source_lang": "en",
+                "target_lang": "de",
+                "formality": "informal",
+            },
+        )
+
+        system_prompt = json.loads(httpx_mock.get_requests()[0].content)["messages"][0]["content"]
+        assert "IMPORTANT: Use informal address" in system_prompt
+        # The context block no longer tells the model to copy the context's tone.
+        assert "consistency of tone" not in system_prompt
+
+    def test_partial_without_context_has_no_reminder(
+        self, client: TestClient, httpx_mock: HTTPXMock
+    ):
+        httpx_mock.add_response(json=mock_translation_response("Kannst du das schicken?"))
+
+        client.post(
+            "/api/v1/translate/partial",
+            json={"segment": "Can you send this?", "source_lang": "en", "target_lang": "de", "formality": "informal"},
+        )
+
+        system_prompt = json.loads(httpx_mock.get_requests()[0].content)["messages"][0]["content"]
+        assert "IMPORTANT: Use informal address" not in system_prompt
