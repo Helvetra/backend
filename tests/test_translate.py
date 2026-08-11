@@ -766,3 +766,28 @@ class TestUpstreamRetry:
         assert response.status_code == 503
         assert response.json()["error"]["code"] == "UPSTREAM_UNAVAILABLE"
         assert len(httpx_mock.get_requests()) == 1
+
+
+class TestWholeTextFormalityReminder:
+    """The whole-text path also gets the strong register reminder (helvetra/backend#25)."""
+
+    def test_informal_adds_reminder(self, client: TestClient, httpx_mock: HTTPXMock):
+        import json
+        httpx_mock.add_response(json=mock_translation_response("Kannst du helfen?"))
+        client.post(
+            "/api/v1/translate",
+            json={"text": "Can you help?", "source_lang": "en", "target_lang": "de", "formality": "informal"},
+        )
+        system_prompt = json.loads(httpx_mock.get_requests()[0].content)["messages"][0]["content"]
+        assert "IMPORTANT: Use informal address" in system_prompt
+        assert "EVERY sentence" in system_prompt
+
+    def test_auto_formality_no_reminder(self, client: TestClient, httpx_mock: HTTPXMock):
+        import json
+        httpx_mock.add_response(json=mock_translation_response("Hallo"))
+        client.post(
+            "/api/v1/translate",
+            json={"text": "Hello", "source_lang": "en", "target_lang": "de"},
+        )
+        system_prompt = json.loads(httpx_mock.get_requests()[0].content)["messages"][0]["content"]
+        assert "IMPORTANT: Use" not in system_prompt

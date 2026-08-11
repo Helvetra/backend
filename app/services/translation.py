@@ -343,10 +343,10 @@ def get_formality_instruction(target_lang: str, formality: str) -> str:
 
 def get_formality_reminder(target_lang: str, formality: str) -> str:
     """
-    A strong, final register reminder for partial translation. The reference
-    context otherwise pulls the model off the requested register when the
-    context reads more formal or informal than the chosen tone (German is
-    especially prone). Empty for auto or languages without a T-V distinction.
+    A strong, final register reminder appended to the system prompt. Without it
+    the model drifts off the requested register for polite phrasings and mixes
+    du/Sie across sentences of one text (German is especially prone). Empty for
+    auto or languages without a T-V distinction.
     """
     if formality == "auto" or target_lang not in FORMALITY_FORMS:
         return ""
@@ -355,8 +355,9 @@ def get_formality_reminder(target_lang: str, formality: str) -> str:
     use, avoid = (informal, formal) if formality == "informal" else (formal, informal)
     other = "formal" if formality == "informal" else "informal"
     return (
-        f"\n\nIMPORTANT: Use {formality} address ({use}) in the translation, and never "
-        f"{avoid}. This holds even if the surrounding context is written in a more {other} register."
+        f"\n\nIMPORTANT: Use {formality} address ({use}) consistently in EVERY sentence of the "
+        f"translation, and never {avoid}. This holds even for polite requests and phrasings that "
+        f"would normally read as more {other}. Do not mix registers within the text."
     )
 
 
@@ -576,6 +577,9 @@ async def translate_text(
             formality_rule=formality_rule,
             dialect_instruction=dialect_instruction,
         )
+        # Reinforce the register as the final instruction so a polite sentence
+        # can't drift to the other register or mix du/Sie across the text.
+        system_prompt += get_formality_reminder(target_lang, formality)
 
     cache_key = get_prompt_cache_key(source_lang, target_lang, formality, dialect)
 
