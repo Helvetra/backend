@@ -791,3 +791,79 @@ class TestWholeTextFormalityReminder:
         )
         system_prompt = json.loads(httpx_mock.get_requests()[0].content)["messages"][0]["content"]
         assert "IMPORTANT: Use" not in system_prompt
+
+    def test_auto_detect_source_adds_reminder(
+        self, client: TestClient, httpx_mock: HTTPXMock
+    ):
+        """
+        Detecting the source language must not cost the chosen register. This
+        path built its prompt without the reminder and silently returned Sie
+        for an informal request.
+        """
+        import json
+        httpx_mock.add_response(
+            json=mock_translation_response(
+                '{"translation": "Kannst du helfen?", "detected_lang": "en"}'
+            )
+        )
+        client.post(
+            "/api/v1/translate",
+            json={
+                "text": "Can you help?",
+                "source_lang": "auto",
+                "target_lang": "de",
+                "formality": "informal",
+            },
+        )
+        system_prompt = json.loads(httpx_mock.get_requests()[0].content)["messages"][0]["content"]
+        assert "IMPORTANT: Use informal address" in system_prompt
+        assert "EVERY sentence" in system_prompt
+
+    def test_auto_detect_keeps_json_contract_last(
+        self, client: TestClient, httpx_mock: HTTPXMock
+    ):
+        """The register reminder must not displace the output-format contract."""
+        import json
+        httpx_mock.add_response(
+            json=mock_translation_response(
+                '{"translation": "Kannst du helfen?", "detected_lang": "en"}'
+            )
+        )
+        client.post(
+            "/api/v1/translate",
+            json={
+                "text": "Can you help?",
+                "source_lang": "auto",
+                "target_lang": "de",
+                "formality": "informal",
+            },
+        )
+        system_prompt = json.loads(httpx_mock.get_requests()[0].content)["messages"][0]["content"]
+        assert system_prompt.index("IMPORTANT: Use informal address") < system_prompt.index(
+            "REQUIRED OUTPUT FORMAT"
+        )
+        assert system_prompt.rstrip().endswith(
+            '{"translation": "translated text here", "detected_lang": "xx"}'
+        )
+
+    def test_auto_detect_no_reminder_for_english_target(
+        self, client: TestClient, httpx_mock: HTTPXMock
+    ):
+        """English has no T-V distinction, so no register reminder is added."""
+        import json
+        httpx_mock.add_response(
+            json=mock_translation_response(
+                '{"translation": "Can you help?", "detected_lang": "de"}'
+            )
+        )
+        client.post(
+            "/api/v1/translate",
+            json={
+                "text": "Kannst du helfen?",
+                "source_lang": "auto",
+                "target_lang": "en",
+                "formality": "informal",
+            },
+        )
+        system_prompt = json.loads(httpx_mock.get_requests()[0].content)["messages"][0]["content"]
+        assert "IMPORTANT: Use" not in system_prompt
