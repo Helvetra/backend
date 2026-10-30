@@ -11,8 +11,8 @@ ENV PYTHONUNBUFFERED=1
 # Install dependencies
 FROM base as deps
 
-COPY pyproject.toml .
-RUN pip install --no-cache-dir .
+COPY requirements.lock .
+RUN pip install --no-cache-dir -r requirements.lock
 
 # Production image
 FROM base as production
