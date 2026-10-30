@@ -59,10 +59,11 @@ cp .env.example .env
 # meeting minimum length requirements.
 
 # Run with Docker (Postgres + Redis + backend)
-docker-compose up
+docker compose up -d
+docker compose exec api alembic upgrade head   # create/update the database schema
 
-# Or run locally
-pip install -e ".[dev]"
+# Or run locally (Python 3.11+)
+pip install -r requirements.lock -e ".[dev]"
 alembic upgrade head
 uvicorn app.main:app --reload
 

@@ -16,9 +16,14 @@ from app.models import Feedback, RefreshToken, Subscription, User  # noqa: F401
 
 config = context.config
 
-# Load database URL from app settings
+# Load database URL from app settings. Migrations run synchronously, so pin the
+# psycopg2 driver: SQLAlchemy 2.1 maps a bare postgresql:// URL to psycopg 3,
+# which is not installed. See helvetra/backend#136.
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+config.set_main_option(
+    "sqlalchemy.url",
+    settings.database_url.replace("postgresql://", "postgresql+psycopg2://", 1),
+)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
