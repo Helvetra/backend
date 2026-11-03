@@ -27,6 +27,7 @@ from app.services.subscription import (
 )
 from app.services.translation import (
     TranslationIncompleteError,
+    TranslationTimeoutError,
     TranslationValidationError,
     translate_segment,
     translate_text,
@@ -225,6 +226,18 @@ async def _translate_or_http_error(coro):
     """
     try:
         return await coro
+    except TranslationTimeoutError as e:
+        logger.warning("Translation timed out: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail={
+                "code": "TRANSLATION_TIMEOUT",
+                "message": (
+                    "The translation took too long. "
+                    "Please try again, or translate a shorter text."
+                ),
+            },
+        )
     except TranslationIncompleteError as e:
         logger.warning("Translation incomplete: %s", e)
         raise HTTPException(
