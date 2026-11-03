@@ -37,7 +37,8 @@ class PartialTranslateRequest(BaseModel):
     # The one segment to translate. Sanity ceiling only; the per-request tier
     # limit is enforced in the route against this length.
     segment: str = Field(..., min_length=1, max_length=50_000)
-    # Surrounding context, not translated and not charged. Capped for safety.
+    # Surrounding context, not translated and not charged. Together with the
+    # segment it must fit the tier's per-request limit, enforced in the route.
     context_before: str = Field(default="", max_length=50_000)
     context_after: str = Field(default="", max_length=50_000)
     # Partial translation needs an explicit source; "auto" is rejected in the route.
