@@ -20,7 +20,11 @@ from app.schemas.translate import (
     TranslateResponse,
 )
 from app.services.apple_storekit import verify_transaction
-from app.services.subscription import get_or_create_subscription, record_usage
+from app.services.subscription import (
+    get_or_create_subscription,
+    get_usage_status,
+    record_usage,
+)
 from app.services.translation import (
     TranslationValidationError,
     translate_segment,
@@ -107,13 +111,18 @@ async def _resolve_tier(
 
 
 async def _enforce_limits(
-    tier: Tier, config: TierConfig, length: int, http_request: Request
+    tier: Tier,
+    config: TierConfig,
+    length: int,
+    http_request: Request,
+    user: User | None,
+    db: AsyncSession,
 ) -> None:
     """
-    Enforce the per-request character limit and, for anonymous users, the
-    weekly limit. `length` is the number of characters actually translated
-    (full text, or one segment), so partial requests are charged only for the
-    segment they retranslate.
+    Enforce the per-request character limit, the monthly quota for signed-in
+    users, and the weekly limit for anonymous users. `length` is the number of
+    characters actually translated (full text, or one segment), so partial
+    requests are charged only for the segment they retranslate.
     """
     if length > config.max_chars_per_request:
         message = (
@@ -130,6 +139,24 @@ async def _enforce_limits(
                 "limit": config.max_chars_per_request,
             },
         )
+
+    if user is not None:
+        # Usage is recorded only after a successful translation, so the quota
+        # has to be checked here, before the model is called. See
+        # helvetra/backend#139.
+        usage = await get_usage_status(db, user.id)
+        if not usage.can_translate:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "code": "USAGE_LIMIT_EXCEEDED",
+                    "message": (
+                        f"Monthly limit of {usage.characters_limit} characters reached."
+                    ),
+                    "characters_used": usage.characters_used,
+                    "characters_limit": usage.characters_limit,
+                },
+            )
 
     if tier == Tier.ANONYMOUS:
         client_ip = get_client_ip(http_request)
@@ -215,7 +242,7 @@ async def translate(
     tier = await _resolve_tier(user, http_request, db)
     config = get_tier_config(tier)
     text_length = len(request.text)
-    await _enforce_limits(tier, config, text_length, http_request)
+    await _enforce_limits(tier, config, text_length, http_request, user, db)
 
     result = await _translate_or_http_error(
         translate_text(
@@ -277,7 +304,7 @@ async def translate_partial(
     config = get_tier_config(tier)
     # Only the segment is translated, so only its length is limited and charged.
     segment_length = len(request.segment)
-    await _enforce_limits(tier, config, segment_length, http_request)
+    await _enforce_limits(tier, config, segment_length, http_request, user, db)
 
     result = await _translate_or_http_error(
         translate_segment(

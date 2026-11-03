@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     # Rate limiting
     rate_limit_per_minute: int = 60
     rate_limit_per_day: int = 500
+    # Signed-in accounts: burst protection only, the monthly quota is the
+    # real cap. Higher daily limit because edits retranslate per sentence.
+    rate_limit_user_per_minute: int = 60
+    rate_limit_user_per_day: int = 2000
 
     # Encryption (for PII)
     encryption_key: str = ""
