@@ -70,7 +70,7 @@ async def create_api_key(
     """
     # Resolve the user's tier-specific key cap
     subscription = await get_b2b_subscription(db, user_id)
-    tier = Tier(subscription.tier.value) if subscription else Tier.STARTER
+    tier = Tier(subscription.tier.value) if subscription else Tier.BUSINESS
     max_keys = get_tier_config(tier, product="b2b").max_api_keys
 
     # Check key limit

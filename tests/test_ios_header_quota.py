@@ -25,12 +25,12 @@ def body(text: str) -> dict:
 
 
 def budget(allowed: bool, used: int = 0) -> UsageResult:
-    """Build an iOS budget result for the free plan's 20k monthly limit."""
+    """Build an iOS budget result for the free plan's 5k monthly limit."""
     return UsageResult(
         allowed=allowed,
         characters_used=used,
-        characters_limit=20_000,
-        characters_remaining=max(0, 20_000 - used),
+        characters_limit=5_000,
+        characters_remaining=max(0, 5_000 - used),
         reset_at=9999999999,
     )
 
@@ -52,7 +52,7 @@ class TestIosHeaderBudget:
             anonymous_usage_tracker,
             "check_and_record_ios_usage",
             new_callable=AsyncMock,
-            return_value=budget(False, used=20_000),
+            return_value=budget(False, used=5_000),
         ):
             response = client.post(
                 "/api/v1/translate", json=body("Hello"), headers=IOS_HEADERS
@@ -63,15 +63,15 @@ class TestIosHeaderBudget:
         assert httpx_mock.get_requests() == []
 
     def test_budget_left_keeps_free_request_size(self, client, httpx_mock: HTTPXMock):
-        """iOS users keep the free plan's 1,000-character requests and are charged per IP."""
+        """iOS users keep the free plan's request size (500) and are charged per IP."""
         httpx_mock.add_response(json={"choices": [{"message": {"content": "Bonjour"}}]})
-        text = "a" * 900
+        text = "a" * 450
         with (
             patch.object(
                 anonymous_usage_tracker,
                 "check_and_record_ios_usage",
                 new_callable=AsyncMock,
-                return_value=budget(True, used=900),
+                return_value=budget(True, used=450),
             ) as ios_usage,
             patch.object(
                 anonymous_usage_tracker, "check_and_record_usage", new_callable=AsyncMock
@@ -81,7 +81,7 @@ class TestIosHeaderBudget:
 
         assert response.status_code == 200
         ios_usage.assert_awaited_once()
-        assert ios_usage.await_args.args[1] == 900
+        assert ios_usage.await_args.args[1] == 450
         weekly_usage.assert_not_awaited()
 
     def test_web_requests_still_use_the_weekly_limit(self, client, httpx_mock: HTTPXMock):
@@ -122,9 +122,9 @@ class TestIosBudgetTracker:
             result = await tracker.check_and_record_ios_usage("1.2.3.4", 300)
 
         assert tracker._check_and_incr.keys == ["usage:ios:1.2.3.4:2026-11"]
-        assert tracker._check_and_incr.args[:2] == [300, 20_000]
+        assert tracker._check_and_incr.args[:2] == [300, 5_000]
         assert result.allowed is True
-        assert result.characters_remaining == 19_700
+        assert result.characters_remaining == 4_700
 
     @pytest.mark.parametrize("today,expected", [
         (datetime(2026, 11, 3, 8, 0, tzinfo=timezone.utc), datetime(2026, 12, 1)),

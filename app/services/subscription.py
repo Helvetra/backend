@@ -53,7 +53,7 @@ async def get_or_create_subscription(
 
     if subscription is None:
         default_tier = (
-            SubscriptionTier.STARTER if product == SubscriptionProduct.B2B
+            SubscriptionTier.BUSINESS if product == SubscriptionProduct.B2B
             else SubscriptionTier.FREE
         )
         subscription = Subscription(

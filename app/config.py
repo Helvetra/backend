@@ -63,6 +63,7 @@ class Settings(BaseSettings):
 
     # Stripe B2B — resolved at runtime via lookup keys, not raw price IDs,
     # so price rotations in the Stripe Dashboard don't require code/env changes.
+    # Starter is no longer offered; kept so existing env files still load.
     stripe_b2b_starter_base_lookup: str = ""
     stripe_b2b_starter_overage_lookup: str = ""
     stripe_b2b_business_base_lookup: str = ""

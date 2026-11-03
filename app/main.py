@@ -49,9 +49,6 @@ if not settings.debug:
     _require_secret("STRIPE_SECRET_KEY", settings.stripe_secret_key, min_len=20)
     _require_secret("STRIPE_WEBHOOK_SECRET", settings.stripe_webhook_secret, min_len=20)
     _require_secret(
-        "STRIPE_B2B_STARTER_BASE_LOOKUP", settings.stripe_b2b_starter_base_lookup, min_len=4
-    )
-    _require_secret(
         "STRIPE_B2B_BUSINESS_BASE_LOOKUP", settings.stripe_b2b_business_base_lookup, min_len=4
     )
 

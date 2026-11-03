@@ -1,7 +1,8 @@
 """
 Anonymous usage tracking service.
 Tracks character usage by IP address: weekly limits for anonymous users, and a
-monthly budget for unverified iOS app requests.
+monthly budget for unverified iOS app requests. Also tracks how long an IP has
+been using Helvetra without an account.
 """
 
 from dataclasses import dataclass
@@ -30,6 +31,14 @@ def get_week_key() -> str:
     """Get the current ISO week identifier (YYYY-WW)."""
     now = datetime.now(timezone.utc)
     return now.strftime("%G-W%V")
+
+
+# How long a visitor may translate without an account, counted from their
+# first anonymous translation. After that an account is required.
+ANONYMOUS_TRIAL_DAYS = 28
+# How long the first-use date is remembered. An IP seen again after this
+# starts a new trial, which keeps the stored data bounded.
+_FIRST_SEEN_TTL_SECONDS = 365 * 24 * 60 * 60
 
 
 def get_month_key() -> str:
@@ -139,6 +148,18 @@ class AnonymousUsageTracker:
             32 * 24 * 60 * 60,  # month + buffer
             next_month_start(),
         )
+
+    async def anonymous_trial_ended(self, ip_address: str) -> bool:
+        """
+        Record the first anonymous use from this IP and report whether its
+        free period without an account is over.
+        """
+        await self.connect()
+        key = f"usage:anon-first-seen:{ip_address}"
+        now = int(datetime.now(timezone.utc).timestamp())
+        await self.client.set(key, now, nx=True, ex=_FIRST_SEEN_TTL_SECONDS)
+        first_seen = int(await self.client.get(key) or now)
+        return now - first_seen > ANONYMOUS_TRIAL_DAYS * 24 * 60 * 60
 
     async def get_usage(self, ip_address: str) -> UsageResult:
         """Get current usage without recording anything."""

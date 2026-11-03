@@ -37,14 +37,14 @@ class TierConfig:
 CONSUMER_TIER_CONFIGS: dict[Tier, TierConfig] = {
     Tier.ANONYMOUS: TierConfig(
         max_chars_per_request=400,
-        period_limit=5_000,
+        period_limit=1_000,
         period_type="weekly",
         formality=True,
         max_api_keys=0,
     ),
     Tier.FREE: TierConfig(
-        max_chars_per_request=1_000,
-        period_limit=20_000,
+        max_chars_per_request=500,
+        period_limit=5_000,
         period_type="monthly",
         formality=True,
         max_api_keys=0,
@@ -58,22 +58,19 @@ CONSUMER_TIER_CONFIGS: dict[Tier, TierConfig] = {
     ),
 }
 
-# B2B tier configurations (public API)
+# B2B tier configuration (public API). There is one plan, Business. Starter
+# is no longer offered; any remaining Starter subscription gets the same
+# limits so it keeps working.
+_BUSINESS_CONFIG = TierConfig(
+    max_chars_per_request=10_000,
+    period_limit=2_000_000,
+    period_type="monthly",
+    formality=True,
+    max_api_keys=10,
+)
 B2B_TIER_CONFIGS: dict[Tier, TierConfig] = {
-    Tier.STARTER: TierConfig(
-        max_chars_per_request=10_000,
-        period_limit=500_000,
-        period_type="monthly",
-        formality=True,
-        max_api_keys=1,
-    ),
-    Tier.BUSINESS: TierConfig(
-        max_chars_per_request=50_000,
-        period_limit=2_000_000,
-        period_type="monthly",
-        formality=True,
-        max_api_keys=10,
-    ),
+    Tier.STARTER: _BUSINESS_CONFIG,
+    Tier.BUSINESS: _BUSINESS_CONFIG,
 }
 
 # Combined lookup for backward compatibility

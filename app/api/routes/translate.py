@@ -31,7 +31,7 @@ from app.services.translation import (
     translate_segment,
     translate_text,
 )
-from app.services.usage_tracker import anonymous_usage_tracker
+from app.services.usage_tracker import ANONYMOUS_TRIAL_DAYS, anonymous_usage_tracker
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -122,7 +122,7 @@ async def _enforce_limits(
 ) -> None:
     """
     Enforce the per-request character limit, the monthly quota for signed-in
-    users, the weekly limit for anonymous users, and the monthly per-IP budget
+    users, the free period and weekly limit for anonymous users, the monthly per-IP budget
     for unverified iOS app requests. `length` is the number of
     characters actually translated (full text, or one segment), so partial
     requests are charged only for the segment they retranslate.
@@ -167,6 +167,18 @@ async def _enforce_limits(
 
     if tier == Tier.ANONYMOUS:
         client_ip = get_client_ip(http_request)
+        if await anonymous_usage_tracker.anonymous_trial_ended(client_ip):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "SIGNUP_REQUIRED",
+                    "message": (
+                        "Translating without an account is limited to "
+                        f"{ANONYMOUS_TRIAL_DAYS} days. "
+                        "Create a free account to keep translating."
+                    ),
+                },
+            )
         usage_result = await anonymous_usage_tracker.check_and_record_usage(
             client_ip, length
         )
