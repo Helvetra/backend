@@ -144,6 +144,17 @@ For consistent terminology and references only (names and recurring terms), here
 {context}
 </context>"""
 
+# The tags that mark where user text and reference context start and end in
+# the prompt. User input containing them could close the wrapper early and
+# make what follows read as instructions (helvetra/backend#131).
+_PROMPT_TAG_PATTERN = re.compile(r"<\s*/?\s*(?:text|context)\s*>", re.IGNORECASE)
+
+
+def neutralize_prompt_tags(content: str) -> str:
+    """Remove prompt wrapper tags from user-supplied text before it goes into a prompt."""
+    return _PROMPT_TAG_PATTERN.sub("", content)
+
+
 # Pattern matching wrapper tags the model occasionally echoes back into its output.
 _WRAPPER_TAG_PATTERN = re.compile(r"^\s*<text>\s*|\s*</text>\s*$", re.IGNORECASE)
 
@@ -589,7 +600,10 @@ async def _attempt_translation(
     is_auto_detect = source_lang == "auto"
 
     raw_content = await _call_model(
-        system_prompt, USER_MESSAGE_TEMPLATE.format(text=text), cache_key, temperature
+        system_prompt,
+        USER_MESSAGE_TEMPLATE.format(text=neutralize_prompt_tags(text)),
+        cache_key,
+        temperature,
     )
 
     # Parse response based on mode
@@ -793,7 +807,10 @@ async def _attempt_segment(
 ) -> str:
     """Translate one segment. Only the segment is in the translatable slot."""
     raw_content = await _call_model(
-        system_prompt, USER_MESSAGE_TEMPLATE.format(text=segment), cache_key, temperature
+        system_prompt,
+        USER_MESSAGE_TEMPLATE.format(text=neutralize_prompt_tags(segment)),
+        cache_key,
+        temperature,
     )
 
     translation = strip_wrapper_tags(raw_content)
@@ -827,10 +844,12 @@ async def translate_segment(
     dialect_instruction = get_dialect_instruction(target_lang, dialect)
 
     # The full text the sentence belongs to, supplied as read-only reference.
-    full_context = f"{context_before}{segment}{context_after}".strip()
+    # It stays in the system prompt on purpose (see SYSTEM_PROMPT_PARTIAL), so
+    # its wrapper tags are removed to keep it from closing the block early.
+    full_context = neutralize_prompt_tags(f"{context_before}{segment}{context_after}").strip()
     context_block = (
         PARTIAL_CONTEXT_BLOCK.format(context=full_context)
-        if full_context and full_context != segment.strip()
+        if full_context and full_context != neutralize_prompt_tags(segment).strip()
         else ""
     )
 
