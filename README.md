@@ -10,7 +10,7 @@ The backend serves two surfaces:
 ## Features
 
 ### Translation
-- Translation API powered by Swiss AI (Apertus-70B via Infomaniak)
+- Translation API powered by Swiss AI: Apertus 1.5 (70B, `swiss-ai/Apertus-v1.5-70B`) via Infomaniak
 - Supported languages: German, French, Italian, English, Romansh, and Swiss German (with Zurich, Bern, Basel, Luzern, St. Gallen, and Wallis dialects)
 - Auto-detect source language
 - Formality toggle (du/Sie, tu/vous, tu/Lei)
@@ -45,7 +45,7 @@ The backend serves two surfaces:
 - **Framework:** Python 3.11+ / FastAPI
 - **Database:** PostgreSQL 15 + SQLAlchemy + Alembic
 - **Cache:** Redis 7
-- **AI:** Apertus-70B via Infomaniak AI
+- **AI:** Apertus 1.5 70B (`swiss-ai/Apertus-v1.5-70B`) via Infomaniak AI, OpenAI-compatible API
 - **Auth:** PyJWT (HS256 + RS256) + Sign in with Apple + Apple StoreKit 2 (gated)
 - **Payments:** Stripe (web, consumer + B2B metered) + Apple StoreKit 2 (iOS, gated)
 
