@@ -3,6 +3,7 @@ Translation service.
 Handles communication with the translation API and response validation.
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -506,8 +507,9 @@ async def _attempt_translation(
 
 async def _run_with_retries(make_attempt):
     """
-    Run a translation attempt with one retry on fast upstream failures and one
-    regeneration when output validation rejects the first sample. `make_attempt`
+    Run a translation attempt with one retry on fast upstream failures (after a
+    short wait when the provider is rate limiting) and one regeneration when
+    output validation rejects the first sample. `make_attempt`
     is an async callable taking a temperature and returning the attempt result;
     the same policy serves both whole-text and per-segment translation.
     Timeouts are deliberately not retried (the first attempt already consumed
@@ -528,10 +530,37 @@ async def _run_with_retries(make_attempt):
         logger.warning("Upstream transport error (%s); retrying once", type(e).__name__)
         return await make_attempt(0.1)
     except httpx.HTTPStatusError as e:
+        if e.response.status_code == 429:
+            # The model provider's rate limit is shared by the whole service.
+            # Its budget refills within seconds to a minute, so one short wait
+            # often gets through; longer waits are left to the client.
+            logger.warning(
+                "Upstream rate limited (limit=%s, remaining=%s); retrying once",
+                e.response.headers.get("x-ratelimit-limit"),
+                e.response.headers.get("x-ratelimit-remaining"),
+            )
+            await asyncio.sleep(_upstream_retry_delay(e.response))
+            return await make_attempt(0.1)
         if e.response.status_code < 500:
             raise
         logger.warning("Upstream returned %d; retrying once", e.response.status_code)
         return await make_attempt(0.1)
+
+
+# Bounds for the single wait before retrying a rate-limited model call. The
+# provider has been seen sending "retry-after: 0" while still refusing, so a
+# minimum applies; the maximum keeps the request well inside client timeouts.
+_UPSTREAM_RETRY_MIN_SECONDS = 1.0
+_UPSTREAM_RETRY_MAX_SECONDS = 3.0
+
+
+def _upstream_retry_delay(response: httpx.Response) -> float:
+    """Seconds to wait before retrying a rate-limited model call."""
+    try:
+        requested = float(response.headers.get("retry-after", "0"))
+    except ValueError:
+        requested = 0.0
+    return min(max(requested, _UPSTREAM_RETRY_MIN_SECONDS), _UPSTREAM_RETRY_MAX_SECONDS)
 
 
 # Upstream failures that arrive quickly and are worth one retry. Timeouts are
