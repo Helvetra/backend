@@ -23,6 +23,7 @@ from app.services.stripe_b2b import (
     report_translation_meter_event,
 )
 from app.services.subscription import get_or_create_subscription, get_usage_status, record_usage
+from app.api.translation_errors import translate_or_http_error
 from app.services.translation import translate_text
 from app.services.usage_alerts import maybe_send_usage_alerts
 
@@ -219,8 +220,10 @@ class PublicErrorDetail(BaseModel):
         422: {
             "model": PublicErrorDetail,
             "description": (
-                "Translation rejected. Usually `SUSPICIOUS_OUTPUT` "
-                "(the model produced something unexpectedly long)."
+                "Translation rejected after one automatic retry: "
+                "`SUSPICIOUS_OUTPUT`, `NAME_SUBSTITUTION`, `PLACEHOLDER_LEAK`, "
+                "`UNPARSEABLE_OUTPUT` or `TRANSLATION_INCOMPLETE`. Retry, or "
+                "simplify or shorten the input."
             ),
         },
         429: {
@@ -230,6 +233,17 @@ class PublicErrorDetail(BaseModel):
         500: {
             "model": PublicErrorDetail,
             "description": "Internal translation service error.",
+        },
+        503: {
+            "model": PublicErrorDetail,
+            "description": (
+                "Translation model unavailable (`UPSTREAM_UNAVAILABLE`) or busy "
+                "(`UPSTREAM_BUSY`, honour the Retry-After header)."
+            ),
+        },
+        504: {
+            "model": PublicErrorDetail,
+            "description": "Translation took too long (`TRANSLATION_TIMEOUT`).",
         },
     },
 )
@@ -311,68 +325,52 @@ async def public_translate(
             },
         )
 
-    try:
-        # Translate FIRST. If Apertus fails the exception unwinds and the
-        # outer get_db() rolls back the (empty) transaction — no usage is
-        # billed for a failed request. See helvetra/backend#103.
-        result = await translate_text(
+    # Translate FIRST. If the translation fails the error unwinds and the
+    # outer get_db() rolls back the (empty) transaction, so no usage is
+    # billed for a failed request (helvetra/backend#103). Failures map to the
+    # same structured errors as the web routes (helvetra/backend#132);
+    # anything unexpected is a generic 500 that never echoes internals.
+    result = await translate_or_http_error(
+        translate_text(
             text=request.text,
             source_lang=request.source_lang,
             target_lang=request.target_lang,
             formality=request.formality,
             dialect=request.dialect,
         )
+    )
 
-        # Only record usage and meter the customer for a successful response.
-        usage_status = await record_usage(db, user.id, text_length)
+    # Only record usage and meter the customer for a successful response.
+    usage_status = await record_usage(db, user.id, text_length)
 
-        await db.commit()
+    await db.commit()
 
-        # Report usage to Stripe. Awaited inline (rather than fire-and-forget
-        # via asyncio.create_task) because the task otherwise gets cancelled
-        # when the request scope unwinds or the process restarts, silently
-        # losing meter events — i.e. unbilled translations. The meter call is
-        # sub-100ms and tolerates failure (logged inside the helper) so the
-        # latency cost is acceptable. See helvetra/backend#112.
-        await report_translation_meter_event(
-            stripe_customer_id=user.stripe_customer_id,
-            characters=text_length,
-            idempotency_key=generate_meter_idempotency_key(user.id, text_length),
-        )
+    # Report usage to Stripe. Awaited inline (rather than fire-and-forget
+    # via asyncio.create_task) because the task otherwise gets cancelled
+    # when the request scope unwinds or the process restarts, silently
+    # losing meter events — i.e. unbilled translations. The meter call is
+    # sub-100ms and tolerates failure (logged inside the helper) so the
+    # latency cost is acceptable. See helvetra/backend#112.
+    await report_translation_meter_event(
+        stripe_customer_id=user.stripe_customer_id,
+        characters=text_length,
+        idempotency_key=generate_meter_idempotency_key(user.id, text_length),
+    )
 
-        # Fire usage-alert emails for newly-crossed thresholds. The
-        # helper is fast in the common case (no thresholds crossed →
-        # one indexed read + early return); only the rare crossing
-        # translation pays the SMTP cost. Errors are swallowed inside
-        # the helper so they cannot block the API response.
-        await maybe_send_usage_alerts(db, user, SubscriptionProduct.B2B)
+    # Fire usage-alert emails for newly-crossed thresholds. The
+    # helper is fast in the common case (no thresholds crossed →
+    # one indexed read + early return); only the rare crossing
+    # translation pays the SMTP cost. Errors are swallowed inside
+    # the helper so they cannot block the API response.
+    await maybe_send_usage_alerts(db, user, SubscriptionProduct.B2B)
 
-        return PublicTranslateResponse(
-            translation=result.translation,
-            source_lang=result.detected_source_lang or request.source_lang,
-            target_lang=request.target_lang,
-            detected_source_lang=result.detected_source_lang,
-            characters=text_length,
-        )
-    except ValueError as e:
-        if "suspiciously long" in str(e):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": "SUSPICIOUS_OUTPUT",
-                    "message": "Translation rejected due to suspicious output.",
-                },
-            )
-        raise HTTPException(
-            status_code=500,
-            detail={"code": "TRANSLATION_ERROR", "message": str(e)},
-        )
-    except Exception as e:
-        logger.exception(f"Public API translation failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail={"code": "INTERNAL_ERROR", "message": "Translation service error."},
-        )
+    return PublicTranslateResponse(
+        translation=result.translation,
+        source_lang=result.detected_source_lang or request.source_lang,
+        target_lang=request.target_lang,
+        detected_source_lang=result.detected_source_lang,
+        characters=text_length,
+    )
 
 
 @router.get(

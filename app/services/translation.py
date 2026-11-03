@@ -568,7 +568,13 @@ def _validate_output(source: str, translation: str) -> None:
             max_translation_length,
             translation[:200],
         )
-        raise ValueError("Translation output suspiciously long")
+        raise TranslationValidationError(
+            code="SUSPICIOUS_OUTPUT",
+            detail=(
+                f"Output of {len(translation)} chars for {len(source)} chars of input "
+                f"(limit {max_translation_length})"
+            ),
+        )
 
 
 async def _attempt_translation(
@@ -642,14 +648,13 @@ async def _run_attempts(make_attempt):
     """
     try:
         return await make_attempt(0.1)
-    except (TranslationValidationError, ValueError) as e:
+    except TranslationValidationError as e:
         # Most validation rejections are model nondeterminism; a second sample
         # at slightly higher temperature usually passes. Log both outcomes so
         # the false-positive rate of the validators stays measurable.
-        code = getattr(e, "code", "SUSPICIOUS_OUTPUT")
-        logger.warning("Validation rejected first attempt (%s); regenerating once", code)
+        logger.warning("Validation rejected first attempt (%s); regenerating once", e.code)
         result = await make_attempt(0.3)
-        logger.info("Regeneration recovered from %s", code)
+        logger.info("Regeneration recovered from %s", e.code)
         return result
     except _RETRYABLE_TRANSPORT_ERRORS as e:
         logger.warning("Upstream transport error (%s); retrying once", type(e).__name__)
