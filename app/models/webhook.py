@@ -5,7 +5,6 @@ Tracks all incoming webhook events from payment providers.
 
 import uuid
 from datetime import datetime
-
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Index, String, Text, func

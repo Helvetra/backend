@@ -44,7 +44,9 @@ async def create_verification_token(db: AsyncSession, user_id: uuid.UUID) -> str
     raw_token, hashed_token = generate_verification_token()
 
     # Calculate expiry
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.email_verification_expire_hours)
+    expires_at = datetime.now(timezone.utc) + timedelta(
+        hours=settings.email_verification_expire_hours
+    )
 
     # Store token
     verification_token = EmailVerificationToken(
@@ -124,7 +126,8 @@ async def can_resend_verification(db: AsyncSession, user_id: uuid.UUID) -> tuple
 
     # Allow resend after 60 seconds
     cooldown_seconds = 60
-    time_since_last = datetime.now(timezone.utc) - last_token.created_at.replace(tzinfo=timezone.utc)
+    last_sent = last_token.created_at.replace(tzinfo=timezone.utc)
+    time_since_last = datetime.now(timezone.utc) - last_sent
 
     if time_since_last.total_seconds() < cooldown_seconds:
         remaining = cooldown_seconds - int(time_since_last.total_seconds())

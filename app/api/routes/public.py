@@ -10,8 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 from app.api.dependencies import get_current_user_from_api_key
+from app.api.translation_errors import translate_or_http_error
 from app.core.database import get_db
 from app.core.tiers import Tier, get_tier_config
 from app.models.api_key import ApiKey
@@ -23,7 +23,6 @@ from app.services.stripe_b2b import (
     report_translation_meter_event,
 )
 from app.services.subscription import get_or_create_subscription, get_usage_status, record_usage
-from app.api.translation_errors import translate_or_http_error
 from app.services.translation import translate_text
 from app.services.usage_alerts import maybe_send_usage_alerts
 

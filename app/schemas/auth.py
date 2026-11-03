@@ -15,7 +15,9 @@ class RegisterRequest(BaseModel):
 
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
-    locale: str | None = Field(default=None, description="User's preferred language (en, de, fr, it)")
+    locale: str | None = Field(
+        default=None, description="User's preferred language (en, de, fr, it)"
+    )
     use_cookie: bool = Field(
         default=False, description="Store refresh token in HttpOnly cookie instead of body"
     )
@@ -92,7 +94,9 @@ class ResendVerificationRequest(BaseModel):
     """Resend verification email request."""
 
     email: EmailStr
-    locale: str | None = Field(default=None, description="User's preferred language (en, de, fr, it)")
+    locale: str | None = Field(
+        default=None, description="User's preferred language (en, de, fr, it)"
+    )
 
 
 class AppleSignInRequest(BaseModel):

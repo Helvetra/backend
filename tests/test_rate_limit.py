@@ -85,9 +85,10 @@ class TestRateLimitMiddleware:
             return_value=mock_result,
         ) as mock_check:
             # Also mock health check functions to avoid actual service calls
-            with patch("app.api.routes.health.check_database", new_callable=AsyncMock, return_value="ok"), \
-                 patch("app.api.routes.health.check_redis", new_callable=AsyncMock, return_value="ok"), \
-                 patch("app.api.routes.health.check_translation_api", new_callable=AsyncMock, return_value="ok"):
+            ok = {"new_callable": AsyncMock, "return_value": "ok"}
+            with patch("app.api.routes.health.check_database", **ok), \
+                 patch("app.api.routes.health.check_redis", **ok), \
+                 patch("app.api.routes.health.check_translation_api", **ok):
                 response = client.get("/api/health")
 
                 assert response.status_code == 200
