@@ -604,7 +604,33 @@ async def _attempt_translation(
     return translation, detected_source_lang
 
 
+# Total time one translation request may spend on model calls, retries
+# included. It must stay below the reverse proxy's read timeout (100s, see
+# infra/nginx/conf.d/helvetra.conf), so clients get a real answer instead of
+# a proxy error while the model keeps generating. See helvetra/infra#18.
+TRANSLATION_DEADLINE_SECONDS = 90.0
+
+
+class TranslationTimeoutError(Exception):
+    """Raised when a translation did not finish within its time budget."""
+
+
 async def _run_with_retries(make_attempt):
+    """
+    Run the attempts for one translation within its total time budget, and
+    raise TranslationTimeoutError when the budget runs out.
+    """
+    try:
+        return await asyncio.wait_for(
+            _run_attempts(make_attempt), timeout=TRANSLATION_DEADLINE_SECONDS
+        )
+    except asyncio.TimeoutError as e:
+        raise TranslationTimeoutError(
+            f"No translation within {TRANSLATION_DEADLINE_SECONDS:.0f}s"
+        ) from e
+
+
+async def _run_attempts(make_attempt):
     """
     Run a translation attempt with one retry on fast upstream failures (after a
     short wait when the provider is rate limiting) and one regeneration when
