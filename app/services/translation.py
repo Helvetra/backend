@@ -208,7 +208,7 @@ def apply_swiss_orthography(content: str, target_lang: str) -> str:
 
 
 # Greeting heads across the four supported source/target languages. Followed
-# by an optional title, then the first capitalised proper noun = the name we
+# by optional titles ("Herr Dr."), then the first capitalised proper noun = the name we
 # want to preserve verbatim from source to target.
 _SALUTATION_RE = re.compile(
     r"(?:^|\n)\s*"
@@ -217,7 +217,7 @@ _SALUTATION_RE = re.compile(
     r"Cher|Chère|Chers|Chères|Bonjour|Salut|Coucou|"
     r"Caro|Cara|Cari|Care|Ciao|Salve|Buongiorno|Buonasera|Buondì|"
     r"Char|Chara|Chars|Charas|Allegra|Bun\s+di)"
-    r"(?:\s+(?:Dr|Mr|Mrs|Ms|Mx|Prof|Herr|Frau|Monsieur|Madame|Mme|M|Sig|Sig\.ra)\.?)?"
+    r"(?:\s+(?:Dr|Mr|Mrs|Ms|Mx|Prof|Herr|Frau|Monsieur|Madame|Mme|M|Sig|Sig\.ra)\.?)*"
     r"\s+(?P<name>[A-ZÀ-ÖØ-Þ][\w'’-]+)",
     re.UNICODE,
 )
@@ -227,6 +227,62 @@ def _extract_salutation_name(text: str) -> str | None:
     """Return the recipient name in the opening salutation, or None if not found."""
     match = _SALUTATION_RE.search(text)
     return match.group("name") if match else None
+
+
+# Common words that follow a greeting in place of a name ("Dear Sir",
+# "Hello everyone", "Hi Mom"). Unlike names they are translated, so a
+# different word in the target is expected. Casefolded, all four languages.
+_GENERIC_RECIPIENTS = frozenset({
+    # English
+    "sir", "sirs", "madam", "customer", "customers", "client", "clients",
+    "colleague", "colleagues", "team", "all", "everyone", "everybody",
+    "friend", "friends", "folks", "guys", "neighbour", "neighbours",
+    "neighbor", "neighbors", "members", "parents", "mom", "mum", "mother",
+    "dad", "father", "grandma", "grandpa",
+    # German
+    "damen", "herren", "kunde", "kunden", "kundin", "kundinnen",
+    "kollege", "kollegen", "kollegin", "kolleginnen", "zusammen", "alle",
+    "freund", "freunde", "freundin", "freundinnen", "mitglieder", "eltern",
+    "nachbarn", "mama", "mami", "papa", "papi", "mutter", "vater", "oma", "opa",
+    "leute",
+    # French
+    "messieurs", "mesdames", "collègue", "collègues", "équipe", "tous",
+    "toutes", "ami", "amie", "amis", "amies", "membres", "parents",
+    "voisins", "maman", "papa",
+    # Italian
+    "signori", "signore", "cliente", "clienti", "collega", "colleghi",
+    "colleghe", "squadra", "tutti", "tutte", "amico", "amica", "amici",
+    "amiche", "soci", "genitori", "vicini", "mamma", "papà", "nonna", "nonno",
+})
+
+_WORD_RE = re.compile(r"[\w'’-]+", re.UNICODE)
+
+
+def _words(text: str) -> set[str]:
+    """Return the casefolded words of a text."""
+    return {w.casefold() for w in _WORD_RE.findall(text)}
+
+
+def _salutation_name_substituted(source: str, target: str) -> tuple[str, str] | None:
+    """
+    Return (source name, target name) when the model put a different person
+    in the opening salutation, or None when the salutation is fine.
+    Rejected: the target greets someone named elsewhere in the source (e.g.
+    the signature), or a real name from the source is gone from the target.
+    Accepted: the name is still in the target (titles may be reordered), or
+    the source greets with a common word that gets translated ("Dear Sir").
+    """
+    src_name = _extract_salutation_name(source)
+    tgt_name = _extract_salutation_name(target)
+    if not src_name or not tgt_name or src_name.casefold() == tgt_name.casefold():
+        return None
+
+    swapped_in_from_source = tgt_name.casefold() in _words(source)
+    name_kept = src_name.casefold() in _words(target)
+    translated_common_word = src_name.casefold() in _GENERIC_RECIPIENTS
+    if swapped_in_from_source or not (name_kept or translated_common_word):
+        return src_name, tgt_name
+    return None
 
 
 # Template placeholders the model occasionally invents instead of preserving
@@ -265,9 +321,9 @@ def validate_translation_output(source: str, target: str) -> None:
         (e.g. "[Dein Name]", "[Datum]") that the source did not, the model
         emitted a template artifact instead of preserving the source content.
     """
-    src_name = _extract_salutation_name(source)
-    tgt_name = _extract_salutation_name(target)
-    if src_name and tgt_name and src_name.casefold() != tgt_name.casefold():
+    substitution = _salutation_name_substituted(source, target)
+    if substitution:
+        src_name, tgt_name = substitution
         raise TranslationValidationError(
             code="NAME_SUBSTITUTION",
             detail=f"Salutation name changed from {src_name!r} to {tgt_name!r}",
