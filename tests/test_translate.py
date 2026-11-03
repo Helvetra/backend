@@ -692,6 +692,11 @@ class TestPaidTierLengths:
                     return_value=fake_subscription,
                 ),
                 patch(
+                    "app.api.routes.translate.get_usage_status",
+                    new_callable=AsyncMock,
+                    return_value=MagicMock(can_translate=True),
+                ),
+                patch(
                     "app.api.routes.translate.record_usage",
                     new_callable=AsyncMock,
                 ),

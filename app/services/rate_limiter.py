@@ -1,10 +1,11 @@
 """
 Rate limiting service using Redis.
-Tracks request counts per IP address with configurable limits.
+Tracks request counts per client (IP address or signed-in account) with
+configurable limits.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import redis.asyncio as redis
 
@@ -43,19 +44,27 @@ class RateLimiter:
             await self.client.aclose()
             self.client = None
 
-    async def check_rate_limit(self, ip_address: str) -> RateLimitResult:
+    async def check_rate_limit(
+        self,
+        client_key: str,
+        minute_limit: int | None = None,
+        day_limit: int | None = None,
+    ) -> RateLimitResult:
         """
-        Check if request is within rate limits.
+        Check if a client's request is within rate limits, counting it if so.
+        Uses the anonymous per-IP limits unless other limits are given.
         Returns result with remaining quota and reset time.
         """
         await self.connect()
+        minute_limit = minute_limit or self.minute_limit
+        day_limit = day_limit or self.day_limit
 
         now = datetime.now()
         current_minute = now.strftime("%Y%m%d%H%M")
         current_day = now.strftime("%Y%m%d")
 
-        minute_key = f"rate:minute:{ip_address}:{current_minute}"
-        day_key = f"rate:day:{ip_address}:{current_day}"
+        minute_key = f"rate:minute:{client_key}:{current_minute}"
+        day_key = f"rate:day:{client_key}:{current_day}"
 
         # Get current counts
         pipe = self.client.pipeline()
@@ -67,7 +76,7 @@ class RateLimiter:
         day_count = int(results[1] or 0)
 
         # Check minute limit
-        if minute_count >= self.minute_limit:
+        if minute_count >= minute_limit:
             seconds_until_next_minute = 60 - now.second
             return RateLimitResult(
                 allowed=False,
@@ -77,10 +86,10 @@ class RateLimiter:
             )
 
         # Check day limit
-        if day_count >= self.day_limit:
+        if day_count >= day_limit:
             # Calculate seconds until midnight
             midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            next_midnight = midnight.replace(day=midnight.day + 1)
+            next_midnight = midnight + timedelta(days=1)
             seconds_until_midnight = int((next_midnight - now).total_seconds())
             return RateLimitResult(
                 allowed=False,
@@ -98,8 +107,8 @@ class RateLimiter:
         await pipe.execute()
 
         # Return remaining (use the more restrictive limit)
-        remaining_minute = self.minute_limit - minute_count - 1
-        remaining_day = self.day_limit - day_count - 1
+        remaining_minute = minute_limit - minute_count - 1
+        remaining_day = day_limit - day_count - 1
         remaining = min(remaining_minute, remaining_day)
 
         return RateLimitResult(
