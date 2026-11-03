@@ -487,6 +487,32 @@ def _parse_auto_detect_response(content: str) -> tuple[str, str]:
     )
 
 
+# One HTTP client for all model calls, so connections (and their TLS
+# handshakes) to the provider are reused instead of opened per translation.
+# Bound to the event loop that created it: a new loop (tests) gets a new one.
+_model_client: httpx.AsyncClient | None = None
+_model_client_loop: asyncio.AbstractEventLoop | None = None
+
+
+def _get_model_client() -> httpx.AsyncClient:
+    """Return the shared HTTP client for model calls, creating it if needed."""
+    global _model_client, _model_client_loop
+    loop = asyncio.get_running_loop()
+    if _model_client is None or _model_client_loop is not loop:
+        _model_client = httpx.AsyncClient(timeout=60.0)
+        _model_client_loop = loop
+    return _model_client
+
+
+async def close_model_client() -> None:
+    """Close the shared model HTTP client (application shutdown)."""
+    global _model_client, _model_client_loop
+    if _model_client is not None:
+        await _model_client.aclose()
+    _model_client = None
+    _model_client_loop = None
+
+
 async def _call_model(
     system_prompt: str,
     user_message: str,
@@ -494,27 +520,26 @@ async def _call_model(
     temperature: float,
 ) -> str:
     """Make one model call and return the raw, stripped completion text."""
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{settings.apertus_api_base}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.apertus_api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": settings.apertus_model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message},
-                ],
-                "temperature": temperature,
-                "max_tokens": _output_token_budget(user_message),
-                "prompt_cache_key": cache_key,
-            },
-            timeout=60.0,
-        )
-        response.raise_for_status()
-        data = response.json()
+    response = await _get_model_client().post(
+        f"{settings.apertus_api_base}/chat/completions",
+        headers={
+            "Authorization": f"Bearer {settings.apertus_api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": settings.apertus_model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            "temperature": temperature,
+            "max_tokens": _output_token_budget(user_message),
+            "prompt_cache_key": cache_key,
+        },
+        timeout=60.0,
+    )
+    response.raise_for_status()
+    data = response.json()
 
     # Log token usage for monitoring
     usage = data.get("usage") or {}
