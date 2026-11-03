@@ -3,6 +3,8 @@ API entry point.
 Initializes the app with middleware and routes.
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,6 +24,7 @@ from app.api.routes import (
 from app.config import get_settings
 from app.core.errors import install_error_handlers
 from app.core.middleware import RateLimitMiddleware
+from app.services.translation import close_model_client
 
 settings = get_settings()
 
@@ -52,7 +55,15 @@ if not settings.debug:
         "STRIPE_B2B_BUSINESS_BASE_LOOKUP", settings.stripe_b2b_business_base_lookup, min_len=4
     )
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Release shared connections when the application shuts down."""
+    yield
+    await close_model_client()
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Helvetra API",
     description="Swiss translation API",
     version="0.1.0",
