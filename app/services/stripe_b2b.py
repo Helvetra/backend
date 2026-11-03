@@ -82,19 +82,12 @@ class B2BCheckoutPriceIds:
 
 def _price_config(tier: Tier) -> B2BCheckoutPriceIds:
     """Return the lookup-key bundle for a given B2B tier."""
-    if tier == Tier.STARTER:
-        return B2BCheckoutPriceIds(
-            tier=Tier.STARTER,
-            base_lookup=settings.stripe_b2b_starter_base_lookup,
-            overage_lookup=settings.stripe_b2b_starter_overage_lookup,
-            trial_days=14,
-        )
     if tier == Tier.BUSINESS:
         return B2BCheckoutPriceIds(
             tier=Tier.BUSINESS,
             base_lookup=settings.stripe_b2b_business_base_lookup,
             overage_lookup=settings.stripe_b2b_business_overage_lookup,
-            trial_days=0,
+            trial_days=14,
         )
     raise ValueError(f"Tier {tier} is not a B2B tier")
 
@@ -106,8 +99,6 @@ def tier_from_price_lookup(lookup_key: str) -> Tier | None:
     """
     if not lookup_key:
         return None
-    if lookup_key == settings.stripe_b2b_starter_base_lookup:
-        return Tier.STARTER
     if lookup_key == settings.stripe_b2b_business_base_lookup:
         return Tier.BUSINESS
     return None
@@ -132,9 +123,9 @@ def create_b2b_checkout_session(
     cancel_url: str,
 ) -> B2BCheckoutResponse:
     """
-    Create a Stripe Checkout session for a B2B Starter or Business
-    subscription. Includes both the base recurring price and the metered
-    overage price as line items. Starter gets a 14-day trial.
+    Create a Stripe Checkout session for the B2B subscription. Includes both
+    the base recurring price and the metered overage price as line items,
+    with a 14-day trial.
     """
     if not settings.stripe_secret_key:
         return B2BCheckoutResponse(success=False, error="Payment system not configured")

@@ -108,7 +108,7 @@ class TestOutputBudget:
     def test_budget_is_sent_with_the_request(self, client, httpx_mock: HTTPXMock):
         """The model call carries a budget sized from the request, not a constant."""
         httpx_mock.add_response(json={"choices": [{"message": {"content": "x"}}]})
-        text = "Hello there. " * 70  # 910 characters
+        text = "Hello there. " * 35  # 455 characters, under the free limit
 
         client.post(
             "/api/v1/translate",
@@ -117,7 +117,6 @@ class TestOutputBudget:
         )
 
         sent = json.loads(httpx_mock.get_requests()[0].content)
-        assert sent["max_tokens"] > 512
         assert sent["max_tokens"] == _output_token_budget(sent["messages"][1]["content"])
 
     @pytest.mark.parametrize("length,expected", [

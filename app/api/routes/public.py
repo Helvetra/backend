@@ -52,8 +52,7 @@ class PublicTranslateRequest(BaseModel):
         ...,
         min_length=1,
         description=(
-            "Text to translate. The maximum length per request depends on "
-            "your tier (10,000 characters on Starter, 50,000 on Business)."
+            "Text to translate, up to 10,000 characters per request."
         ),
         examples=["Grüezi mitenand! Schön, dass ihr da sind."],
     )

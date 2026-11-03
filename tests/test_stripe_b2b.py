@@ -25,11 +25,12 @@ def _clear_cache():
 class TestTierFromPriceLookup:
     """Mapping a Stripe price lookup key back to a B2B tier."""
 
-    def test_starter_base_lookup_maps_to_starter(self):
+    def test_starter_lookup_is_no_longer_a_plan(self):
+        """Starter is not sold anymore, so its price no longer maps to a tier."""
         with patch.object(
             stripe_b2b.settings, "stripe_b2b_starter_base_lookup", "b2b_starter_base"
         ):
-            assert stripe_b2b.tier_from_price_lookup("b2b_starter_base") == Tier.STARTER
+            assert stripe_b2b.tier_from_price_lookup("b2b_starter_base") is None
 
     def test_business_base_lookup_maps_to_business(self):
         with patch.object(

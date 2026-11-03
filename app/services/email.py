@@ -75,16 +75,15 @@ TRANSLATIONS = {
             "subject": "Your Helvetra API trial ends soon",
             "intro": "Hi,",
             "body": (
-                "Your Helvetra B2B API trial ends in 3 days. After that, "
-                "your card will be charged for the first month of Starter "
-                "(CHF 29). Keep using the API as normal — nothing to do."
+                "Your Helvetra API trial ends in 3 days. After that, your "
+                "card will be charged for the first month (CHF 39). Keep "
+                "using the API as normal, there is nothing to do."
             ),
             "button": "Open your dashboard",
             "link_text": "Or open this link in your browser:",
             "manage": (
-                "Want to change your plan or stop the trial? You can do "
-                "either from the developer dashboard under \"Manage "
-                "billing\"."
+                "Want to stop the trial? You can cancel from the developer "
+                "dashboard under \"Manage billing\"."
             ),
             "ignore": "Questions? Just reply to this email.",
         },
@@ -92,17 +91,15 @@ TRANSLATIONS = {
             "subject": "Ihre Helvetra-API-Testphase endet bald",
             "intro": "Hallo,",
             "body": (
-                "Ihre Helvetra-B2B-API-Testphase endet in 3 Tagen. "
-                "Danach wird Ihre Karte für den ersten Monat Starter "
-                "(CHF 29) belastet. Nutzen Sie die API einfach weiter — "
-                "es ist nichts zu tun."
+                "Ihre Helvetra-API-Testphase endet in 3 Tagen. Danach wird "
+                "Ihre Karte für den ersten Monat (CHF 39) belastet. Nutzen "
+                "Sie die API einfach weiter, es ist nichts zu tun."
             ),
             "button": "Zum Dashboard",
             "link_text": "Oder öffnen Sie diesen Link im Browser:",
             "manage": (
-                "Möchten Sie Ihren Tarif ändern oder die Testphase "
-                "beenden? Beides geht im Entwickler-Dashboard unter "
-                "\"Abrechnung verwalten\"."
+                "Möchten Sie die Testphase beenden? Das geht im "
+                "Entwickler-Dashboard unter \"Abrechnung verwalten\"."
             ),
             "ignore": "Fragen? Antworten Sie einfach auf diese E-Mail.",
         },
@@ -110,17 +107,17 @@ TRANSLATIONS = {
             "subject": "Votre essai de l'API Helvetra se termine bientôt",
             "intro": "Bonjour,",
             "body": (
-                "Votre essai de l'API B2B Helvetra se termine dans "
-                "3 jours. Votre carte sera ensuite débitée du premier "
-                "mois de Starter (CHF 29). Continuez à utiliser l'API "
-                "normalement — rien à faire."
+                "Votre essai de l'API Helvetra se termine dans 3 jours. "
+                "Votre carte sera ensuite débitée du premier mois (CHF 39). "
+                "Continuez à utiliser l'API normalement, il n'y a rien à "
+                "faire."
             ),
             "button": "Ouvrir le tableau de bord",
             "link_text": "Ou ouvrez ce lien dans votre navigateur :",
             "manage": (
-                "Vous voulez changer d'offre ou arrêter l'essai ? Vous "
-                "pouvez faire les deux depuis le tableau de bord "
-                "développeur, sous « Gérer la facturation »."
+                "Vous voulez arrêter l'essai ? Vous pouvez annuler depuis "
+                "le tableau de bord développeur, sous « Gérer la "
+                "facturation »."
             ),
             "ignore": "Des questions ? Répondez simplement à cet e-mail.",
         },
@@ -128,17 +125,15 @@ TRANSLATIONS = {
             "subject": "La tua prova dell'API Helvetra termina presto",
             "intro": "Ciao,",
             "body": (
-                "La tua prova dell'API B2B Helvetra termina tra 3 giorni. "
-                "Dopo, la tua carta sarà addebitata per il primo mese di "
-                "Starter (CHF 29). Continua a usare l'API normalmente — "
-                "non c'è nulla da fare."
+                "La tua prova dell'API Helvetra termina tra 3 giorni. Dopo, "
+                "la tua carta sarà addebitata per il primo mese (CHF 39). "
+                "Continua a usare l'API normalmente, non c'è nulla da fare."
             ),
             "button": "Apri la dashboard",
             "link_text": "Oppure apri questo link nel browser:",
             "manage": (
-                "Vuoi cambiare piano o interrompere la prova? Puoi fare "
-                "entrambe le cose dalla dashboard sviluppatori sotto "
-                "\"Gestisci fatturazione\"."
+                "Vuoi interrompere la prova? Puoi annullarla dalla "
+                "dashboard sviluppatori sotto \"Gestisci fatturazione\"."
             ),
             "ignore": "Domande? Rispondi semplicemente a questa e-mail.",
         },
@@ -148,15 +143,15 @@ TRANSLATIONS = {
             "subject": "You've used 80% of your Helvetra API quota",
             "intro": "Hi,",
             "body": (
-                "Heads up — you've used 80% of your included characters "
-                "for this billing period. Nothing changes yet; this is "
-                "just so you can plan ahead."
+                "Heads up: you've used 80% of your included characters for "
+                "this billing period. Nothing changes yet, this is just so "
+                "you can plan ahead."
             ),
             "button": "Check usage in the dashboard",
             "link_text": "Or open this link in your browser:",
             "manage": (
-                "Need more headroom? You can upgrade to a higher tier "
-                "from the dashboard under \"Manage billing\"."
+                "Need more capacity? Reply to this email and we'll set up "
+                "an Enterprise plan for you."
             ),
             "ignore": "Questions? Just reply to this email.",
         },
@@ -164,16 +159,15 @@ TRANSLATIONS = {
             "subject": "Sie haben 80% Ihres Helvetra-API-Kontingents genutzt",
             "intro": "Hallo,",
             "body": (
-                "Kurzer Hinweis — Sie haben 80% Ihrer inklusive Zeichen "
-                "in dieser Abrechnungsperiode genutzt. Es ändert sich "
-                "noch nichts; das ist nur zur Planung."
+                "Kurzer Hinweis: Sie haben 80% Ihrer inklusive Zeichen in "
+                "dieser Abrechnungsperiode genutzt. Es ändert sich noch "
+                "nichts, das ist nur zur Planung."
             ),
             "button": "Verbrauch im Dashboard ansehen",
             "link_text": "Oder öffnen Sie diesen Link im Browser:",
             "manage": (
-                "Brauchen Sie mehr Spielraum? Im Dashboard unter "
-                "\"Abrechnung verwalten\" können Sie auf einen "
-                "höheren Tarif wechseln."
+                "Brauchen Sie mehr Kapazität? Antworten Sie auf diese "
+                "E-Mail, dann richten wir Ihnen einen Enterprise-Tarif ein."
             ),
             "ignore": "Fragen? Antworten Sie einfach auf diese E-Mail.",
         },
@@ -181,16 +175,15 @@ TRANSLATIONS = {
             "subject": "Vous avez utilisé 80 % de votre quota d'API Helvetra",
             "intro": "Bonjour,",
             "body": (
-                "Petit message — vous avez utilisé 80 % des caractères "
-                "inclus pour cette période de facturation. Rien ne "
-                "change pour l'instant ; c'est juste pour anticiper."
+                "Petit message : vous avez utilisé 80 % des caractères "
+                "inclus pour cette période de facturation. Rien ne change "
+                "pour l'instant, c'est juste pour anticiper."
             ),
             "button": "Voir l'utilisation dans le tableau de bord",
             "link_text": "Ou ouvrez ce lien dans votre navigateur :",
             "manage": (
-                "Besoin de plus de marge ? Vous pouvez passer à une "
-                "offre supérieure depuis le tableau de bord, sous "
-                "« Gérer la facturation »."
+                "Besoin de plus de capacité ? Répondez à cet e-mail et nous "
+                "mettrons en place une offre Enterprise pour vous."
             ),
             "ignore": "Des questions ? Répondez simplement à cet e-mail.",
         },
@@ -198,16 +191,15 @@ TRANSLATIONS = {
             "subject": "Hai usato l'80% del tuo quota API Helvetra",
             "intro": "Ciao,",
             "body": (
-                "Un avviso — hai usato l'80% dei caratteri inclusi per "
-                "questo periodo di fatturazione. Per ora non cambia "
-                "nulla; è solo per pianificare."
+                "Un avviso: hai usato l'80% dei caratteri inclusi per "
+                "questo periodo di fatturazione. Per ora non cambia nulla, "
+                "è solo per pianificare."
             ),
             "button": "Vedi l'utilizzo nella dashboard",
             "link_text": "Oppure apri questo link nel browser:",
             "manage": (
-                "Hai bisogno di più margine? Puoi passare a un piano "
-                "superiore dalla dashboard sotto \"Gestisci "
-                "fatturazione\"."
+                "Hai bisogno di più capacità? Rispondi a questa e-mail e "
+                "attiveremo per te un piano Enterprise."
             ),
             "ignore": "Domande? Rispondi semplicemente a questa e-mail.",
         },
@@ -218,16 +210,14 @@ TRANSLATIONS = {
             "intro": "Hi,",
             "body": (
                 "You've used 100% of the characters included in your "
-                "current billing period. Further translation requests "
-                "will be rejected until the next period starts. Upgrade "
-                "anytime from the dashboard to get more capacity."
+                "current billing period. Further translation requests will "
+                "be rejected until the next period starts."
             ),
             "button": "Manage your plan",
             "link_text": "Or open this link in your browser:",
             "manage": (
-                "On Starter you can move to Business for a much higher "
-                "included quota (2,000,000 characters) and a lower "
-                "per-character overage rate."
+                "Need more capacity? Reply to this email and we'll set up "
+                "an Enterprise plan for you."
             ),
             "ignore": "Questions? Just reply to this email.",
         },
@@ -236,18 +226,14 @@ TRANSLATIONS = {
             "intro": "Hallo,",
             "body": (
                 "Sie haben 100% der inklusive Zeichen in Ihrer aktuellen "
-                "Abrechnungsperiode genutzt. Weitere Übersetzungs-"
-                "Anfragen werden bis zum Beginn der nächsten Periode "
-                "abgelehnt. Sie können im Dashboard jederzeit auf einen "
-                "höheren Tarif wechseln."
+                "Abrechnungsperiode genutzt. Weitere Übersetzungs-Anfragen "
+                "werden bis zum Beginn der nächsten Periode abgelehnt."
             ),
             "button": "Tarif verwalten",
             "link_text": "Oder öffnen Sie diesen Link im Browser:",
             "manage": (
-                "Auf Starter können Sie auf Business wechseln und "
-                "erhalten ein deutlich höheres Inklusiv-Kontingent "
-                "(2'000'000 Zeichen) und einen tieferen Verbrauchs-"
-                "Tarif pro Zeichen."
+                "Brauchen Sie mehr Kapazität? Antworten Sie auf diese "
+                "E-Mail, dann richten wir Ihnen einen Enterprise-Tarif ein."
             ),
             "ignore": "Fragen? Antworten Sie einfach auf diese E-Mail.",
         },
@@ -255,19 +241,16 @@ TRANSLATIONS = {
             "subject": "Vous avez atteint votre quota d'API Helvetra",
             "intro": "Bonjour,",
             "body": (
-                "Vous avez utilisé 100 % des caractères inclus dans "
-                "votre période de facturation actuelle. Les requêtes "
+                "Vous avez utilisé 100 % des caractères inclus dans votre "
+                "période de facturation actuelle. Les requêtes "
                 "supplémentaires seront rejetées jusqu'au début de la "
-                "prochaine période. Vous pouvez passer à une offre "
-                "supérieure depuis le tableau de bord à tout moment."
+                "prochaine période."
             ),
             "button": "Gérer votre offre",
             "link_text": "Ou ouvrez ce lien dans votre navigateur :",
             "manage": (
-                "Sur Starter vous pouvez passer à Business pour un "
-                "quota inclus bien plus élevé (2 000 000 caractères) "
-                "et un tarif au caractère plus avantageux pour le "
-                "dépassement."
+                "Besoin de plus de capacité ? Répondez à cet e-mail et nous "
+                "mettrons en place une offre Enterprise pour vous."
             ),
             "ignore": "Des questions ? Répondez simplement à cet e-mail.",
         },
@@ -275,18 +258,16 @@ TRANSLATIONS = {
             "subject": "Hai raggiunto il tuo quota API Helvetra",
             "intro": "Ciao,",
             "body": (
-                "Hai usato il 100% dei caratteri inclusi nel periodo "
-                "di fatturazione corrente. Le ulteriori richieste di "
-                "traduzione saranno rifiutate fino all'inizio del "
-                "prossimo periodo. Puoi passare a un piano superiore "
-                "dalla dashboard in qualsiasi momento."
+                "Hai usato il 100% dei caratteri inclusi nel periodo di "
+                "fatturazione corrente. Le ulteriori richieste di "
+                "traduzione saranno rifiutate fino all'inizio del prossimo "
+                "periodo."
             ),
             "button": "Gestisci il piano",
             "link_text": "Oppure apri questo link nel browser:",
             "manage": (
-                "Su Starter puoi passare a Business per un quota "
-                "inclusa molto più alta (2.000.000 caratteri) e una "
-                "tariffa per carattere più bassa per l'eccedenza."
+                "Hai bisogno di più capacità? Rispondi a questa e-mail e "
+                "attiveremo per te un piano Enterprise."
             ),
             "ignore": "Domande? Rispondi semplicemente a questa e-mail.",
         },
@@ -552,7 +533,7 @@ class EmailService:
         self, to_email: str, locale: str | None = None
     ) -> bool:
         """
-        Notify a B2B customer that their 14-day Starter trial ends in
+        Notify a B2B customer that their 14-day API trial ends in
         ~3 days, so they can upgrade, cancel, or do nothing as they prefer.
         Triggered by the Stripe customer.subscription.trial_will_end
         webhook event.

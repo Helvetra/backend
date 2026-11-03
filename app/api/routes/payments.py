@@ -47,7 +47,7 @@ class CreateGatewayResponse(BaseModel):
 class CreateB2BGatewayRequest(BaseModel):
     """Request to create a B2B subscription checkout."""
 
-    tier: str  # "starter" or "business"
+    tier: str  # "business" (the only B2B plan)
 
 
 @router.post("/create-gateway", response_model=CreateGatewayResponse)
@@ -95,11 +95,11 @@ async def create_b2b_payment_gateway(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> CreateGatewayResponse:
-    """Create a Stripe Checkout Session for B2B Starter or Business subscription."""
-    if request.tier not in ("starter", "business"):
+    """Create a Stripe Checkout Session for the B2B subscription."""
+    if request.tier != "business":
         raise HTTPException(
             status_code=400,
-            detail="Invalid tier. Must be 'starter' or 'business'.",
+            detail="Invalid tier. Must be 'business'.",
         )
 
     tier = Tier(request.tier)

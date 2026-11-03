@@ -16,7 +16,6 @@ from app.models.subscription import (
     Subscription,
     SubscriptionProduct,
     SubscriptionStatus,
-    SubscriptionTier,
     UsagePeriod,
 )
 from app.models.user import User
@@ -101,12 +100,12 @@ async def get_b2b_subscription(
     tier_config = get_tier_config(tier_enum, product="b2b")
     usage = await get_usage_status(db, user.id)
 
-    # Detect trial period heuristically: Starter customers have a 14-day
+    # Detect trial period heuristically: new subscriptions have a 14-day
     # Stripe trial, so if the subscription was created within the last
     # 14 days we treat the current period as the trial. This avoids an
     # extra Stripe API call per dashboard load.
     is_trialing = False
-    if subscription.tier == SubscriptionTier.STARTER and subscription.created_at:
+    if subscription.created_at:
         trial_cutoff = datetime.now(timezone.utc) - timedelta(days=14)
         is_trialing = subscription.created_at > trial_cutoff
 
