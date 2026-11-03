@@ -14,7 +14,8 @@ The backend serves two surfaces:
 - Supported languages: German, French, Italian, English, Romansh, and Swiss German (with Zurich, Bern, Basel, Luzern, St. Gallen, and Wallis dialects)
 - Auto-detect source language
 - Formality toggle (du/Sie, tu/vous, tu/Lei)
-- Prompt-injection defence in depth: delimiter-wrapped user input, system-prompt isolation, length-ratio guard, trailing-commentary stripping (EN/DE/FR/IT)
+- Incremental translation: `/translate/partial` retranslates only the edited sentence, with the rest of the text as read-only context
+- Prompt-injection defence in depth: delimiter-wrapped user input, system-prompt isolation, length-ratio guard, trailing-commentary stripping (EN/DE/FR/IT). See [How Helvetra uses Apertus](#how-helvetra-uses-apertus)
 - Tier-based per-request and per-period character limits
 
 ### Auth
@@ -26,12 +27,12 @@ The backend serves two surfaces:
 - Per-(email, IP) login lockout to prevent targeted account-lockout DoS
 - Email verification with multilingual templates (EN/DE/FR/IT)
 - Sign in with Apple (RS256 via PyJWT + Apple JWKS)
-- Apple StoreKit 2 subscription verification — currently kill-switched pending a rewrite against the App Store Root CA chain
+- Apple StoreKit 2 subscription verification, currently switched off pending a rewrite against the App Store Root CA chain
 
 ### Payments
 - **Web (consumer)**: Stripe Checkout for monthly/yearly subscriptions + Customer Portal for self-serve management
-- **Web (B2B)**: Stripe metered billing with lookup-key-resolved prices, 14-day Starter trial, in-line meter events on every translation
-- **iOS**: StoreKit 2 (verifier rewrite pending — see above)
+- **Web (B2B)**: one self-serve plan with Stripe metered billing, lookup-key-resolved prices, a 14-day trial, and in-line meter events on every translation
+- **iOS**: StoreKit 2 (verifier rewrite pending, see above)
 
 ### Operations
 - Rate limiting in Redis (per-IP global + per-endpoint auth + per-(email,IP) lockout)
@@ -54,7 +55,7 @@ The backend serves two surfaces:
 ```bash
 # Clone and configure
 cp .env.example .env
-# Edit .env — at minimum set JWT_SECRET_KEY, ENCRYPTION_KEY, APERTUS_API_KEY,
+# Edit .env: at minimum set JWT_SECRET_KEY, ENCRYPTION_KEY, APERTUS_API_KEY,
 # DATABASE_URL, REDIS_URL. App refuses to boot in prod without secrets
 # meeting minimum length requirements.
 
@@ -72,6 +73,37 @@ uvicorn app.main:app --reload
 # B2B public docs:   http://localhost:8000/api/public/v1/docs
 ```
 
+## Running tests
+
+```bash
+pip install -r requirements.lock -e ".[dev]"
+pytest          # the suite mocks the model, Redis and the database; no API key needed
+ruff check app tests
+```
+
+## How Helvetra uses Apertus
+
+Helvetra translates with [Apertus](https://www.apertus-ai.org/), the open model from the Swiss AI Initiative (EPFL, ETH Zurich, CSCS), version 1.5 70B, through Infomaniak's OpenAI-compatible API. Everything below lives in [`app/services/translation.py`](app/services/translation.py).
+
+**One call per translation.** A chat completion with a system prompt (the rules) and a user message (the text). Temperature 0.1; the output budget is sized from the input (512 to 8,192 tokens); one translation gets 90 seconds in total.
+
+**Prompt structure.**
+- The user's text sits between `<text>` and `</text>`, followed by an instruction to translate it and never respond to it. Those tags are removed from user input first, so a text cannot close the block and add instructions.
+- The system prompt includes short examples (a question, a request, a letter) showing that questions and instructions are translated, not answered.
+- For incremental translation, only the edited sentence goes into `<text>`. The full text is given in the system prompt as read-only `<context>`. Putting the context next to the sentence made Apertus translate all of it.
+- Automatic source detection asks for JSON (`{"translation": ..., "detected_lang": ...}`). Infomaniak rejects `response_format: json_object` for this model, so the parser accepts code fences and almost-JSON, and rejects anything else.
+
+**Output guards.** Each answer is checked before it is returned. If a check fails, the answer is regenerated once at temperature 0.3; if that fails too, the API returns a specific error code instead of a doubtful translation.
+- Name swaps in greetings ("Dear Claudia" becoming "Liebe Alex")
+- Invented template placeholders (`[Dein Name]`, `[Datum]`)
+- Output more than 3 times the input length (a sign that the model answered instead of translating)
+- Translations cut off at the output budget
+- Unreadable JSON in auto-detect mode
+
+Cleanup steps remove echoed wrapper tags, trailing notes such as "(Note: ...)", and a repeated source in brackets. German output uses Swiss spelling (ss instead of ß). For casual or formal German, a final reminder keeps du or Sie consistent across the whole text.
+
+**Habits we had to work around.** Answering questions instead of translating them, adding notes, swapping names or inventing placeholders in letters, drifting between du and Sie, and wrapping JSON in Markdown fences. Speed on Infomaniak is about 70 to 90 output tokens per second, which is why one request is limited to 10,000 characters. These protections are prompt structure plus checks, not a guarantee.
+
 ## API surfaces
 
 ### Consumer API (JWT or session cookie)
@@ -88,13 +120,14 @@ uvicorn app.main:app --reload
 | GET | `/api/v1/auth/me` | Current authenticated user |
 | DELETE | `/api/v1/auth/account` | Delete account + cancel active subscription |
 | POST | `/api/v1/translate` | Translate text (anonymous or authenticated) |
+| POST | `/api/v1/translate/partial` | Retranslate one sentence, with the surrounding text as context |
 | POST | `/api/v1/feedback` | Submit translation feedback (rate-limited per IP) |
 | GET | `/api/v1/languages` | List supported languages and dialects |
 | GET | `/api/v1/subscription` | Consumer subscription status |
 | GET | `/api/v1/subscription/b2b` | B2B subscription status |
 | GET | `/api/v1/subscription/b2b/usage-history` | Last 12 monthly usage periods |
 | GET | `/api/v1/subscription/limits` | Tier limits for the current user |
-| GET | `/api/v1/subscription/anonymous-usage` | Weekly anonymous usage status |
+| GET | `/api/v1/subscription/anonymous-usage` | Weekly usage without an account |
 | POST | `/api/v1/payments/create-gateway` | Start a consumer Stripe checkout |
 | POST | `/api/v1/payments/create-b2b-gateway` | Start a B2B Stripe checkout |
 | POST | `/api/v1/payments/b2b-portal` | Open Stripe Customer Portal session |
@@ -150,6 +183,10 @@ app/
 alembic/                # Database migrations
 tests/                  # pytest suite
 ```
+
+## About
+
+Built by Alex Margot with [Claude Code](https://claude.com/claude-code), reviewed and tested by hand. Issues and questions: gruezi@helvetra.ch.
 
 ## License
 
