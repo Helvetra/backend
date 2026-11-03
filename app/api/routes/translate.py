@@ -117,6 +117,7 @@ async def _enforce_limits(
     http_request: Request,
     user: User | None,
     db: AsyncSession,
+    text_length: int | None = None,
 ) -> None:
     """
     Enforce the per-request character limit, the monthly quota for signed-in
@@ -124,8 +125,12 @@ async def _enforce_limits(
     for unverified iOS app requests. `length` is the number of
     characters actually translated (full text, or one segment), so partial
     requests are charged only for the segment they retranslate.
+    `text_length` is the size of the whole text sent, context included, and
+    is what the per-request limit applies to (defaults to `length`).
     """
-    if length > config.max_chars_per_request:
+    if text_length is None:
+        text_length = length
+    if text_length > config.max_chars_per_request:
         message = (
             f"Text exceeds {config.max_chars_per_request} character limit. "
             "Create a free account for longer texts."
@@ -326,9 +331,14 @@ async def translate_partial(
 
     tier = await _resolve_tier(user, http_request, db)
     config = get_tier_config(tier)
-    # Only the segment is translated, so only its length is limited and charged.
+    # Only the segment is translated and charged, but the context goes to the
+    # model too, so segment and context together are held to the same
+    # per-request limit as a whole-text translation. See helvetra/backend#130.
     segment_length = len(request.segment)
-    await _enforce_limits(tier, config, segment_length, http_request, user, db)
+    text_length = segment_length + len(request.context_before) + len(request.context_after)
+    await _enforce_limits(
+        tier, config, segment_length, http_request, user, db, text_length=text_length
+    )
 
     result = await _translate_or_http_error(
         translate_segment(

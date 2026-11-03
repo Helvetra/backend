@@ -120,21 +120,21 @@ class TestPartialHappyPath:
 
 
 class TestPartialCharging:
-    """Only the segment counts toward limits — context is free."""
+    """Only the segment is charged; segment and context together fit the request limit."""
 
-    def test_large_context_small_segment_accepted(
+    def test_context_within_limit_charged_for_segment_only(
         self, client: TestClient, httpx_mock: HTTPXMock
     ):
-        """Anonymous per-request limit is 400. A 20-char segment with 5000 chars
-        of context must pass and be charged for the segment only."""
+        """Anonymous per-request limit is 400. A 14-char segment with 380 chars
+        of context fits and is charged for the segment only."""
         httpx_mock.add_response(json=mock_translation_response("Hallo zäme"))
 
         response = client.post(
             "/api/v1/translate/partial",
             json={
-                "segment": "Hello everyone",  # 14 chars, under the 400 anon limit
-                "context_before": "x" * 5000,
-                "context_after": "y" * 5000,
+                "segment": "Hello everyone",
+                "context_before": "x" * 190,
+                "context_after": "y" * 190,
                 "source_lang": "en",
                 "target_lang": "de",
             },
@@ -142,6 +142,28 @@ class TestPartialCharging:
 
         assert response.status_code == 200
         assert response.json()["meta"]["characters"] == len("Hello everyone")
+
+    def test_large_context_small_segment_rejected(
+        self, client: TestClient, httpx_mock: HTTPXMock
+    ):
+        """Context goes to the model too, so a tiny segment cannot carry more
+        context than the per-request limit allows. See helvetra/backend#130."""
+        response = client.post(
+            "/api/v1/translate/partial",
+            json={
+                "segment": "Hello everyone",
+                "context_before": "x" * 5000,
+                "context_after": "y" * 5000,
+                "source_lang": "en",
+                "target_lang": "de",
+            },
+        )
+
+        assert response.status_code == 400
+        error = response.json()["error"]
+        assert error["code"] == "TEXT_TOO_LONG"
+        assert error["limit"] == 400
+        assert httpx_mock.get_requests() == []
 
     def test_segment_over_anon_limit_rejected(self, client: TestClient):
         """A segment above the anonymous per-request limit is rejected."""
