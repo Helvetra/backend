@@ -120,7 +120,8 @@ async def _enforce_limits(
 ) -> None:
     """
     Enforce the per-request character limit, the monthly quota for signed-in
-    users, and the weekly limit for anonymous users. `length` is the number of
+    users, the weekly limit for anonymous users, and the monthly per-IP budget
+    for unverified iOS app requests. `length` is the number of
     characters actually translated (full text, or one segment), so partial
     requests are charged only for the segment they retranslate.
     """
@@ -169,6 +170,29 @@ async def _enforce_limits(
                 detail={
                     "code": "WEEKLY_LIMIT_EXCEEDED",
                     "message": f"Weekly limit of {usage_result.characters_limit} characters reached. Create a free account for more.",
+                    "characters_used": usage_result.characters_used,
+                    "characters_limit": usage_result.characters_limit,
+                    "reset_at": usage_result.reset_at,
+                },
+            )
+
+    elif user is None and tier == Tier.FREE:
+        # The iOS app's header is not verified, so anyone can send it. Until
+        # the app proves itself (helvetra/backend#117), these requests get
+        # the free plan's monthly budget, counted per IP.
+        client_ip = get_client_ip(http_request)
+        usage_result = await anonymous_usage_tracker.check_and_record_ios_usage(
+            client_ip, length
+        )
+        if not usage_result.allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "code": "USAGE_LIMIT_EXCEEDED",
+                    "message": (
+                        f"Monthly limit of {usage_result.characters_limit} characters "
+                        "reached. Create a free account for more."
+                    ),
                     "characters_used": usage_result.characters_used,
                     "characters_limit": usage_result.characters_limit,
                     "reset_at": usage_result.reset_at,

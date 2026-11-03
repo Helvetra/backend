@@ -1,6 +1,7 @@
 """
 Anonymous usage tracking service.
-Tracks character usage by IP address with weekly limits for anonymous users.
+Tracks character usage by IP address: weekly limits for anonymous users, and a
+monthly budget for unverified iOS app requests.
 """
 
 from dataclasses import dataclass
@@ -29,6 +30,18 @@ def get_week_key() -> str:
     """Get the current ISO week identifier (YYYY-WW)."""
     now = datetime.now(timezone.utc)
     return now.strftime("%G-W%V")
+
+
+def get_month_key() -> str:
+    """Get the current month identifier (YYYY-MM)."""
+    return datetime.now(timezone.utc).strftime("%Y-%m")
+
+
+def next_month_start() -> int:
+    """Unix timestamp of the first day of next month, 00:00 UTC."""
+    now = datetime.now(timezone.utc)
+    year, month = (now.year + 1, 1) if now.month == 12 else (now.year, now.month + 1)
+    return int(datetime(year, month, 1, tzinfo=timezone.utc).timestamp())
 
 
 # Atomic check-and-increment in Redis. Previously this was GET → check →
@@ -71,6 +84,26 @@ class AnonymousUsageTracker:
             self.client = None
             self._check_and_incr = None
 
+    async def _check_and_record(
+        self, redis_key: str, characters: int, limit: int, ttl_seconds: int, reset_at: int
+    ) -> UsageResult:
+        """Atomically check `characters` against `limit` for one key and record it."""
+        await self.connect()
+
+        allowed, value = await self._check_and_incr(
+            keys=[redis_key],
+            args=[characters, limit, ttl_seconds],
+        )
+        usage = int(value)
+
+        return UsageResult(
+            allowed=bool(int(allowed)),
+            characters_used=usage,
+            characters_limit=limit,
+            characters_remaining=max(0, limit - usage),
+            reset_at=reset_at,
+        )
+
     async def check_and_record_usage(
         self, ip_address: str, characters: int
     ) -> UsageResult:
@@ -78,34 +111,33 @@ class AnonymousUsageTracker:
         Atomically check whether `characters` fits under the weekly limit
         for this IP and record the usage in the same Redis round-trip.
         """
-        await self.connect()
-
-        config = get_tier_config(Tier.ANONYMOUS)
-        limit = config.period_limit
-        week_key = get_week_key()
-        redis_key = f"usage:anon:{ip_address}:{week_key}"
-        ttl_seconds = 8 * 24 * 60 * 60  # week + buffer
-
-        allowed, value = await self._check_and_incr(
-            keys=[redis_key],
-            args=[characters, limit, ttl_seconds],
-        )
-        allowed = bool(int(allowed))
-        usage = int(value)
-
         now = datetime.now(timezone.utc)
         days_until_monday = (7 - now.weekday()) % 7 or 7
         next_monday = now.replace(
             hour=0, minute=0, second=0, microsecond=0
         ) + timedelta(days=days_until_monday)
-        reset_at = int(next_monday.timestamp())
 
-        return UsageResult(
-            allowed=allowed,
-            characters_used=usage,
-            characters_limit=limit,
-            characters_remaining=max(0, limit - usage),
-            reset_at=reset_at,
+        return await self._check_and_record(
+            f"usage:anon:{ip_address}:{get_week_key()}",
+            characters,
+            get_tier_config(Tier.ANONYMOUS).period_limit,
+            8 * 24 * 60 * 60,  # week + buffer
+            int(next_monday.timestamp()),
+        )
+
+    async def check_and_record_ios_usage(
+        self, ip_address: str, characters: int
+    ) -> UsageResult:
+        """
+        Atomically check and record usage for an unverified iOS app request
+        against the free plan's monthly budget, counted per IP.
+        """
+        return await self._check_and_record(
+            f"usage:ios:{ip_address}:{get_month_key()}",
+            characters,
+            get_tier_config(Tier.FREE).period_limit,
+            32 * 24 * 60 * 60,  # month + buffer
+            next_month_start(),
         )
 
     async def get_usage(self, ip_address: str) -> UsageResult:
