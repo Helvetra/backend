@@ -237,20 +237,48 @@ async def _translate_or_http_error(coro):
                 },
             )
         raise
-    except httpx.HTTPError as e:
-        # Upstream model API failure is not our 500: tell clients the service
-        # is temporarily unavailable so they can show a real message.
-        logger.error(f"Upstream translation API error: {e}")
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code != 429:
+            raise _upstream_unavailable(e)
+        # The provider's shared rate limit is exhausted even after a retry.
+        # Tell clients to back off for a while instead of retrying per keystroke.
+        logger.error("Upstream translation API rate limited after retry: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={
-                "code": "UPSTREAM_UNAVAILABLE",
+                "code": "UPSTREAM_BUSY",
                 "message": (
-                    "The translation service is temporarily unavailable. "
-                    "Please try again in a moment."
+                    "The translation service is busy right now. "
+                    "Please try again in a few seconds."
                 ),
+                "retry_after": UPSTREAM_BUSY_RETRY_AFTER_SECONDS,
             },
+            headers={"Retry-After": str(UPSTREAM_BUSY_RETRY_AFTER_SECONDS)},
         )
+    except httpx.HTTPError as e:
+        raise _upstream_unavailable(e)
+
+
+# How long clients should wait after the model provider's rate limit refused
+# a request twice. Its budget has been observed to refill within a minute.
+UPSTREAM_BUSY_RETRY_AFTER_SECONDS = 10
+
+
+def _upstream_unavailable(e: httpx.HTTPError) -> HTTPException:
+    """Build the response for an upstream model API failure."""
+    # Upstream model API failure is not our 500: tell clients the service
+    # is temporarily unavailable so they can show a real message.
+    logger.error(f"Upstream translation API error: {e}")
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "code": "UPSTREAM_UNAVAILABLE",
+            "message": (
+                "The translation service is temporarily unavailable. "
+                "Please try again in a moment."
+            ),
+        },
+    )
 
 
 @router.post("/translate", response_model=TranslateResponse)

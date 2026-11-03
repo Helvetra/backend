@@ -3,6 +3,8 @@ Translation endpoint tests.
 Covers input validation, API integration, and output validation.
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
@@ -771,6 +773,59 @@ class TestUpstreamRetry:
         assert response.status_code == 503
         assert response.json()["error"]["code"] == "UPSTREAM_UNAVAILABLE"
         assert len(httpx_mock.get_requests()) == 1
+
+    def test_upstream_rate_limit_waits_then_recovers(
+        self, client: TestClient, httpx_mock: HTTPXMock
+    ):
+        """A provider 429 is retried once after a short wait (helvetra/infra#21)."""
+        httpx_mock.add_response(status_code=429, headers={"retry-after": "0"})
+        httpx_mock.add_response(json=mock_translation_response("Bonjour"))
+
+        with patch("app.services.translation.asyncio.sleep", new_callable=AsyncMock) as sleep:
+            response = client.post(
+                "/api/v1/translate",
+                json={"text": "Hello", "source_lang": "en", "target_lang": "fr"},
+            )
+
+        assert response.status_code == 200
+        assert len(httpx_mock.get_requests()) == 2
+        sleep.assert_awaited_once_with(1.0)
+
+    def test_upstream_rate_limit_twice_returns_busy(
+        self, client: TestClient, httpx_mock: HTTPXMock
+    ):
+        """Still rate limited after the retry: tell the client to back off."""
+        httpx_mock.add_response(status_code=429)
+        httpx_mock.add_response(status_code=429)
+
+        with patch("app.services.translation.asyncio.sleep", new_callable=AsyncMock):
+            response = client.post(
+                "/api/v1/translate",
+                json={"text": "Hello", "source_lang": "en", "target_lang": "fr"},
+            )
+
+        assert response.status_code == 503
+        error = response.json()["error"]
+        assert error["code"] == "UPSTREAM_BUSY"
+        assert error["retry_after"] == 10
+        assert response.headers["retry-after"] == "10"
+        assert len(httpx_mock.get_requests()) == 2
+
+    @pytest.mark.parametrize("header,expected", [
+        ("0", 1.0),
+        ("2", 2.0),
+        ("30", 3.0),
+        ("soon", 1.0),
+        (None, 1.0),
+    ])
+    def test_upstream_retry_delay_is_bounded(self, header, expected):
+        """The wait follows retry-after but stays between one and three seconds."""
+        import httpx
+
+        from app.services.translation import _upstream_retry_delay
+
+        headers = {"retry-after": header} if header is not None else {}
+        assert _upstream_retry_delay(httpx.Response(429, headers=headers)) == expected
 
 
 class TestWholeTextFormalityReminder:
