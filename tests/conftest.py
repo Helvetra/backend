@@ -62,6 +62,12 @@ def mock_anonymous_usage_tracker():
         ),
         patch.object(
             anonymous_usage_tracker,
+            "check_and_record_ios_usage",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ),
+        patch.object(
+            anonymous_usage_tracker,
             "get_usage",
             new_callable=AsyncMock,
             return_value=mock_result,
