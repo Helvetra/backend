@@ -318,7 +318,9 @@ def test_strip_source_echo_unit():
 
     # Exact echo (punctuation/case ignored) is stripped.
     assert (
-        _strip_source_echo("Die Seen sind schön. (The lakes are stunning)", "The lakes are stunning.")
+        _strip_source_echo(
+            "Die Seen sind schön. (The lakes are stunning)", "The lakes are stunning."
+        )
         == "Die Seen sind schön."
     )
     # A non-matching parenthetical is preserved.
@@ -375,7 +377,12 @@ class TestPartialFormality:
 
         client.post(
             "/api/v1/translate/partial",
-            json={"segment": "Can you send this?", "source_lang": "en", "target_lang": "de", "formality": "informal"},
+            json={
+                "segment": "Can you send this?",
+                "source_lang": "en",
+                "target_lang": "de",
+                "formality": "informal",
+            },
         )
 
         system_prompt = json.loads(httpx_mock.get_requests()[0].content)["messages"][0]["content"]

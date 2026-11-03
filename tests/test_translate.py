@@ -488,7 +488,10 @@ class TestStripWrapperTags:
         """Apertus uses 'This is a literal translation...' as a meta block."""
         from app.services.translation import strip_wrapper_tags
 
-        raw = "Do isch do\n(This is a literal translation of the text, as the original text is very short and ambiguous.)"
+        raw = (
+            "Do isch do\n(This is a literal translation of the text, "
+            "as the original text is very short and ambiguous.)"
+        )
         assert strip_wrapper_tags(raw) == "Do isch do"
 
     def test_strips_trailing_the_original_text(self):
@@ -872,7 +875,12 @@ class TestWholeTextFormalityReminder:
         httpx_mock.add_response(json=mock_translation_response("Kannst du helfen?"))
         client.post(
             "/api/v1/translate",
-            json={"text": "Can you help?", "source_lang": "en", "target_lang": "de", "formality": "informal"},
+            json={
+                "text": "Can you help?",
+                "source_lang": "en",
+                "target_lang": "de",
+                "formality": "informal",
+            },
         )
         system_prompt = json.loads(httpx_mock.get_requests()[0].content)["messages"][0]["content"]
         assert "IMPORTANT: Use informal address" in system_prompt

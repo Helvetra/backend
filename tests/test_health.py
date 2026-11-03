@@ -10,6 +10,9 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
+# Module whose service checks are patched.
+HEALTH = "app.api.routes.health"
+
 
 @pytest.fixture
 def client():
@@ -22,9 +25,9 @@ class TestHealthEndpoint:
 
     def test_health_returns_response_format(self, client: TestClient):
         """Health check returns expected response structure."""
-        with patch("app.api.routes.health.check_database", new_callable=AsyncMock) as mock_db, \
-             patch("app.api.routes.health.check_redis", new_callable=AsyncMock) as mock_redis, \
-             patch("app.api.routes.health.check_translation_api", new_callable=AsyncMock) as mock_api:
+        with patch(f"{HEALTH}.check_database", new_callable=AsyncMock) as mock_db, \
+             patch(f"{HEALTH}.check_redis", new_callable=AsyncMock) as mock_redis, \
+             patch(f"{HEALTH}.check_translation_api", new_callable=AsyncMock) as mock_api:
             mock_db.return_value = "ok"
             mock_redis.return_value = "ok"
             mock_api.return_value = "ok"
@@ -42,9 +45,9 @@ class TestHealthEndpoint:
 
     def test_health_all_services_ok(self, client: TestClient):
         """Overall status is ok when all services are healthy."""
-        with patch("app.api.routes.health.check_database", new_callable=AsyncMock) as mock_db, \
-             patch("app.api.routes.health.check_redis", new_callable=AsyncMock) as mock_redis, \
-             patch("app.api.routes.health.check_translation_api", new_callable=AsyncMock) as mock_api:
+        with patch(f"{HEALTH}.check_database", new_callable=AsyncMock) as mock_db, \
+             patch(f"{HEALTH}.check_redis", new_callable=AsyncMock) as mock_redis, \
+             patch(f"{HEALTH}.check_translation_api", new_callable=AsyncMock) as mock_api:
             mock_db.return_value = "ok"
             mock_redis.return_value = "ok"
             mock_api.return_value = "ok"
@@ -56,9 +59,9 @@ class TestHealthEndpoint:
 
     def test_health_degraded_when_db_fails(self, client: TestClient):
         """Overall status is degraded when database is unhealthy."""
-        with patch("app.api.routes.health.check_database", new_callable=AsyncMock) as mock_db, \
-             patch("app.api.routes.health.check_redis", new_callable=AsyncMock) as mock_redis, \
-             patch("app.api.routes.health.check_translation_api", new_callable=AsyncMock) as mock_api:
+        with patch(f"{HEALTH}.check_database", new_callable=AsyncMock) as mock_db, \
+             patch(f"{HEALTH}.check_redis", new_callable=AsyncMock) as mock_redis, \
+             patch(f"{HEALTH}.check_translation_api", new_callable=AsyncMock) as mock_api:
             mock_db.return_value = "error"
             mock_redis.return_value = "ok"
             mock_api.return_value = "ok"
@@ -71,9 +74,9 @@ class TestHealthEndpoint:
 
     def test_health_degraded_when_redis_fails(self, client: TestClient):
         """Overall status is degraded when Redis is unhealthy."""
-        with patch("app.api.routes.health.check_database", new_callable=AsyncMock) as mock_db, \
-             patch("app.api.routes.health.check_redis", new_callable=AsyncMock) as mock_redis, \
-             patch("app.api.routes.health.check_translation_api", new_callable=AsyncMock) as mock_api:
+        with patch(f"{HEALTH}.check_database", new_callable=AsyncMock) as mock_db, \
+             patch(f"{HEALTH}.check_redis", new_callable=AsyncMock) as mock_redis, \
+             patch(f"{HEALTH}.check_translation_api", new_callable=AsyncMock) as mock_api:
             mock_db.return_value = "ok"
             mock_redis.return_value = "error"
             mock_api.return_value = "ok"
@@ -86,9 +89,9 @@ class TestHealthEndpoint:
 
     def test_health_degraded_when_translation_fails(self, client: TestClient):
         """Overall status is degraded when translation API is unhealthy."""
-        with patch("app.api.routes.health.check_database", new_callable=AsyncMock) as mock_db, \
-             patch("app.api.routes.health.check_redis", new_callable=AsyncMock) as mock_redis, \
-             patch("app.api.routes.health.check_translation_api", new_callable=AsyncMock) as mock_api:
+        with patch(f"{HEALTH}.check_database", new_callable=AsyncMock) as mock_db, \
+             patch(f"{HEALTH}.check_redis", new_callable=AsyncMock) as mock_redis, \
+             patch(f"{HEALTH}.check_translation_api", new_callable=AsyncMock) as mock_api:
             mock_db.return_value = "ok"
             mock_redis.return_value = "ok"
             mock_api.return_value = "error"
@@ -101,9 +104,9 @@ class TestHealthEndpoint:
 
     def test_health_returns_version(self, client: TestClient):
         """Health check includes version information."""
-        with patch("app.api.routes.health.check_database", new_callable=AsyncMock) as mock_db, \
-             patch("app.api.routes.health.check_redis", new_callable=AsyncMock) as mock_redis, \
-             patch("app.api.routes.health.check_translation_api", new_callable=AsyncMock) as mock_api:
+        with patch(f"{HEALTH}.check_database", new_callable=AsyncMock) as mock_db, \
+             patch(f"{HEALTH}.check_redis", new_callable=AsyncMock) as mock_redis, \
+             patch(f"{HEALTH}.check_translation_api", new_callable=AsyncMock) as mock_api:
             mock_db.return_value = "ok"
             mock_redis.return_value = "ok"
             mock_api.return_value = "ok"

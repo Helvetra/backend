@@ -1,0 +1,28 @@
+# Run lint and the test suite on every push and pull request.
+# The suite mocks the model, Redis and the database, so no services or
+# secrets are needed; the app only requires a JWT secret to start.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DEBUG: "true"
+      JWT_SECRET_KEY: ci-only-not-a-secret-ci-only-not-a-secret-123456
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - name: Install
+        run: pip install -r requirements.lock -e ".[dev]"
+      - name: Lint
+        run: ruff check app tests
+      - name: Test
+        run: pytest -q

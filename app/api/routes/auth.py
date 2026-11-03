@@ -493,7 +493,9 @@ async def resend_verification(
 
     # Always return success to prevent email enumeration
     if not user:
-        return MessageResponse(success=True, message="If the email exists, a verification link has been sent")
+        return MessageResponse(
+            success=True, message="If the email exists, a verification link has been sent"
+        )
 
     # Already verified
     if user.email_verified:

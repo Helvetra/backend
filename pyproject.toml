@@ -52,6 +52,12 @@ exclude = ["alembic/versions"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
 
+[tool.ruff.lint.per-file-ignores]
+# Prompt text and email copy/HTML live in long string literals. Wrapping them
+# would change what the model reads or what the email shows.
+"app/services/translation.py" = ["E501"]
+"app/services/email.py" = ["E501"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true

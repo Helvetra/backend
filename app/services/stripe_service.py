@@ -22,9 +22,9 @@ from app.models.subscription import (
     SubscriptionTier,
 )
 from app.models.user import User
-from app.services.webhook_events import check_idempotency, record_webhook_event
 from app.services.stripe_b2b import tier_from_price_lookup
 from app.services.subscription import get_or_create_subscription, sync_usage_period_limit
+from app.services.webhook_events import check_idempotency, record_webhook_event
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

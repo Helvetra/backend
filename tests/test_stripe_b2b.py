@@ -172,7 +172,7 @@ class TestTrialEndingEmailTemplate:
     """The trial-ending email must render correctly in every supported locale."""
 
     def test_translation_exists_in_each_locale(self):
-        from app.services.email import TRANSLATIONS, SUPPORTED_LOCALES
+        from app.services.email import SUPPORTED_LOCALES, TRANSLATIONS
 
         assert "b2b_trial_ending" in TRANSLATIONS
         for loc in SUPPORTED_LOCALES:
@@ -202,6 +202,7 @@ class TestTrialEndingEmailTemplate:
     def test_send_returns_false_when_smtp_unconfigured(self):
         """When SMTP credentials are blank, the method must fail soft."""
         from unittest.mock import patch
+
         from app.services.email import email_service, settings
 
         with patch.object(settings, "smtp_user", ""):
@@ -275,13 +276,14 @@ class TestUsageAlertEmailMethod:
 
     def test_invalid_threshold_raises(self):
         import pytest
+
         from app.services.email import email_service
 
         with pytest.raises(ValueError, match="Unsupported usage-alert threshold"):
             email_service.send_b2b_usage_alert_email("a@example.com", threshold=42)
 
     def test_eighty_renders_in_all_locales(self):
-        from app.services.email import TRANSLATIONS, SUPPORTED_LOCALES
+        from app.services.email import SUPPORTED_LOCALES, TRANSLATIONS
 
         for loc in SUPPORTED_LOCALES:
             t = TRANSLATIONS["b2b_usage_80"][loc]
@@ -289,7 +291,7 @@ class TestUsageAlertEmailMethod:
             assert t["body"]
 
     def test_hundred_renders_in_all_locales(self):
-        from app.services.email import TRANSLATIONS, SUPPORTED_LOCALES
+        from app.services.email import SUPPORTED_LOCALES, TRANSLATIONS
 
         for loc in SUPPORTED_LOCALES:
             t = TRANSLATIONS["b2b_usage_100"][loc]

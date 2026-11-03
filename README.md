@@ -1,5 +1,7 @@
 # Helvetra Backend
 
+[![CI](https://github.com/Helvetra/backend/actions/workflows/ci.yml/badge.svg)](https://github.com/Helvetra/backend/actions/workflows/ci.yml)
+
 Translation API powering [Helvetra](https://helvetra.ch), a privacy-first Swiss translation app.
 
 The backend serves two surfaces:
@@ -77,9 +79,11 @@ uvicorn app.main:app --reload
 
 ```bash
 pip install -r requirements.lock -e ".[dev]"
-pytest          # the suite mocks the model, Redis and the database; no API key needed
+pytest          # mocks the model, Redis and the database; no API key needed
 ruff check app tests
 ```
+
+The app needs `JWT_SECRET_KEY` (32+ characters) to start, also in tests: set it in `.env` as in Setup, or export it with `DEBUG=true`. CI runs the same steps on every push ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ## How Helvetra uses Apertus
 

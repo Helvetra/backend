@@ -11,7 +11,6 @@ soft so the translation response is never delayed or blocked.
 """
 
 import logging
-import uuid
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -185,7 +185,10 @@ async def _enforce_limits(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail={
                     "code": "WEEKLY_LIMIT_EXCEEDED",
-                    "message": f"Weekly limit of {usage_result.characters_limit} characters reached. Create a free account for more.",
+                    "message": (
+                        f"Weekly limit of {usage_result.characters_limit} characters "
+                        "reached. Create a free account for more."
+                    ),
                     "characters_used": usage_result.characters_used,
                     "characters_limit": usage_result.characters_limit,
                     "reset_at": usage_result.reset_at,
