@@ -579,6 +579,42 @@ class TestValidateTranslationOutput:
             )
         assert exc_info.value.code == "NAME_SUBSTITUTION"
 
+    @pytest.mark.parametrize("source,target", [
+        # The four cases from helvetra/backend#129
+        ("Dear Sir or Madam,\nThank you.", "Sehr geehrte Damen und Herren,\nVielen Dank."),
+        ("Dear Customers,\nWe are moving.", "Liebe Kundinnen und Kunden,\nWir ziehen um."),
+        ("Hello Everyone,\nWelcome.", "Hallo Zusammen,\nWillkommen."),
+        ("Hi Mom, I'm home.", "Hallo Mama, ich bin zu Hause."),
+        # Other translated common words, all four languages
+        ("Liebe Kolleginnen und Kollegen,\nDanke.", "Chers collègues,\nMerci."),
+        ("Cari Colleghi,\nGrazie.", "Dear Colleagues,\nThank you."),
+        ("Hallo Zusammen,\nBis bald.", "Ciao Tutti,\nA presto."),
+        # The name is kept; only the title order differs
+        ("Dear Dr. Müller,\nThanks.", "Sehr geehrter Herr Dr. Müller,\nDanke."),
+    ])
+    def test_translated_salutation_passes(self, source, target):
+        """A greeting word that is not a name may be translated (helvetra/backend#129)."""
+        from app.services.translation import validate_translation_output
+
+        validate_translation_output(source, target)
+
+    @pytest.mark.parametrize("source,target", [
+        # Signature name moved into the greeting
+        ("Hello Everyone,\nSee you.\nAnna", "Hallo Anna,\nBis bald.\nAnna"),
+        # Real name replaced by one that is nowhere in the source
+        ("Dear Claudia,\nThanks.", "Liebe Sabine,\nDanke."),
+    ])
+    def test_salutation_swaps_still_raise(self, source, target):
+        """Relaxing the check for common words must not let real swaps through."""
+        from app.services.translation import (
+            TranslationValidationError,
+            validate_translation_output,
+        )
+
+        with pytest.raises(TranslationValidationError) as exc_info:
+            validate_translation_output(source, target)
+        assert exc_info.value.code == "NAME_SUBSTITUTION"
+
     def test_placeholder_leak_dein_name_raises(self):
         from app.services.translation import (
             TranslationValidationError,
