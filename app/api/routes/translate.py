@@ -26,6 +26,7 @@ from app.services.subscription import (
     record_usage,
 )
 from app.services.translation import (
+    TranslationIncompleteError,
     TranslationValidationError,
     translate_segment,
     translate_text,
@@ -212,6 +213,18 @@ async def _translate_or_http_error(coro):
     """
     try:
         return await coro
+    except TranslationIncompleteError as e:
+        logger.warning("Translation incomplete: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "TRANSLATION_INCOMPLETE",
+                "message": (
+                    "This text is too long to translate in one go. "
+                    "Please split it into shorter parts."
+                ),
+            },
+        )
     except TranslationValidationError as e:
         logger.warning("Translation validation rejected (%s): %s", e.code, e.detail)
         raise HTTPException(
