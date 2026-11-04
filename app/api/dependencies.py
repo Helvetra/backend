@@ -3,6 +3,8 @@ API dependencies for route injection.
 Provides JWT auth for consumer API and API key auth for the B2B public API.
 """
 
+import ipaddress
+
 from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
@@ -18,16 +20,31 @@ optional_security = HTTPBearer(auto_error=False)
 
 
 def get_client_ip(request: Request) -> str:
-    """Extract client IP from request, using trusted proxy headers.
+    """Identify the client's network for limits and logs, using trusted proxy headers.
 
-    Uses X-Real-IP set by nginx, which cannot be spoofed by clients.
-    Falls back to direct connection IP for local development.
+    Uses X-Real-IP set by nginx, which cannot be spoofed by clients, and falls
+    back to the direct connection IP for local development. IPv4 addresses are
+    returned as-is. IPv6 addresses are reduced to their /64 network: devices
+    rotate addresses within it (privacy extensions), so per-address limits
+    would hand out a fresh quota with every new address. See helvetra/infra#22.
     """
     # X-Real-IP is set by nginx from the actual TCP connection
     real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
-        return real_ip.strip()
-    return request.client.host if request.client else "unknown"
+    raw = real_ip.strip() if real_ip else (request.client.host if request.client else "unknown")
+    return client_network(raw)
+
+
+def client_network(address: str) -> str:
+    """Return an IPv4 address unchanged and an IPv6 address as its /64 network."""
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return address
+    if ip.version == 6:
+        if ip.ipv4_mapped:
+            return str(ip.ipv4_mapped)
+        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    return str(ip)
 
 
 async def get_current_user(
