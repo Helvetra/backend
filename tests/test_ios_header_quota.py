@@ -137,3 +137,35 @@ class TestIosBudgetTracker:
             reset_at = usage_tracker.next_month_start()
 
         assert reset_at == int(expected.replace(tzinfo=timezone.utc).timestamp())
+
+
+class TestIosTextTooLongMessage:
+    """App version 1.0 only shows server messages whose fields are all strings."""
+
+    @pytest.mark.parametrize("accept_language,expected", [
+        ("de-CH;q=1.0, en;q=0.9", "Bis zu 500 Zeichen pro Übersetzung"),
+        ("fr-CH", "Jusqu'à 500 caractères"),
+        ("it-IT,en;q=0.8", "Fino a 500 caratteri"),
+        ("rm-CH, en-GB;q=0.9", "Up to 500 characters"),
+        ("", "Up to 500 characters"),
+    ])
+    def test_too_long_error_is_string_only_and_localized(self, client, accept_language, expected):
+        response = client.post(
+            "/api/v1/translate",
+            json=body("a" * 600),
+            headers={**IOS_HEADERS, "Accept-Language": accept_language},
+        )
+
+        assert response.status_code == 400
+        error = response.json()["error"]
+        assert error["code"] == "TEXT_TOO_LONG"
+        assert expected in error["message"]
+        assert "App Store" in error["message"]
+        assert all(isinstance(v, str) for v in error.values())
+
+    def test_web_error_keeps_the_limit_field(self, client):
+        """The web app and API still get the numeric limit."""
+        response = client.post("/api/v1/translate", json=body("a" * 600))
+
+        assert response.status_code == 400
+        assert response.json()["error"]["limit"] == 400
