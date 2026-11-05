@@ -76,6 +76,49 @@ def get_user_tier(
     return Tier.FREE
 
 
+def _is_ios_app(http_request: Request) -> bool:
+    """Whether the request comes from the Helvetra iOS app."""
+    return http_request.headers.get("X-Client") == "helvetra-ios"
+
+
+# Text-too-long message for the iOS app, in the app's interface languages.
+_IOS_TOO_LONG_MESSAGES = {
+    "en": (
+        "Up to {limit} characters per translation. Please shorten the text, "
+        "or update Helvetra in the App Store: the new version shows a "
+        "character counter while you type."
+    ),
+    "de": (
+        "Bis zu {limit} Zeichen pro Übersetzung. Bitte kürzen Sie den Text, "
+        "oder aktualisieren Sie Helvetra im App Store: Die neue Version zeigt "
+        "beim Tippen einen Zeichenzähler."
+    ),
+    "fr": (
+        "Jusqu'à {limit} caractères par traduction. Veuillez raccourcir le "
+        "texte, ou mettez à jour Helvetra dans l'App Store : la nouvelle "
+        "version affiche un compteur de caractères pendant la saisie."
+    ),
+    "it": (
+        "Fino a {limit} caratteri per traduzione. Accorcia il testo, oppure "
+        "aggiorna Helvetra nell'App Store: la nuova versione mostra un "
+        "contatore di caratteri mentre scrivi."
+    ),
+}
+
+
+def _ios_too_long_message(http_request: Request, limit: int) -> str:
+    """Pick the text-too-long message in the device's preferred language."""
+    lang = "en"
+    for part in http_request.headers.get("Accept-Language", "").split(","):
+        candidate = part.split(";")[0].strip().lower()[:2]
+        if candidate in _IOS_TOO_LONG_MESSAGES:
+            lang = candidate
+            break
+    # Swiss thousands separator in German, French and Italian (5'000).
+    number = f"{limit:,}" if lang == "en" else f"{limit:,}".replace(",", "'")
+    return _IOS_TOO_LONG_MESSAGES[lang].format(limit=number)
+
+
 def _require_supported_language(code: str) -> None:
     """Reject a language code we do not yet support."""
     if code not in SUPPORTED_LANGUAGE_CODES:
@@ -129,6 +172,19 @@ async def _enforce_limits(
     """
     if text_length is None:
         text_length = length
+    if text_length > config.max_chars_per_request and _is_ios_app(http_request):
+        # App version 1.0 shows a server message only when every error field
+        # is a string, so this error has no numeric "limit". The message also
+        # points to the update, which shows a character counter while typing.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "TEXT_TOO_LONG",
+                "message": _ios_too_long_message(
+                    http_request, config.max_chars_per_request
+                ),
+            },
+        )
     if text_length > config.max_chars_per_request:
         message = (
             f"Text exceeds {config.max_chars_per_request} character limit. "
