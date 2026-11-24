@@ -13,7 +13,7 @@ The backend serves two surfaces:
 
 ### Translation
 - Translation API powered by Swiss AI: Apertus 1.5 (70B, `swiss-ai/Apertus-v1.5-70B`) via Infomaniak
-- Supported languages: German, French, Italian, English, Romansh, and Swiss German (with Zurich, Bern, Basel, Luzern, St. Gallen, and Wallis dialects)
+- Supported languages: German, French, Italian, English, Romansh, Albanian, Portuguese (European), Spanish, Croatian, Serbian (Latin script), and Swiss German (with Zurich, Bern, Basel, Luzern, St. Gallen, and Wallis dialects)
 - Auto-detect source language
 - Formality toggle (du/Sie, tu/vous, tu/Lei)
 - Incremental translation: `/translate/partial` retranslates only the edited sentence, with the rest of the text as read-only context
@@ -164,6 +164,11 @@ Cleanup steps remove echoed wrapper tags, trailing notes such as "(Note: ...)", 
 | it | Italian |
 | en | English |
 | rm | Romansh |
+| sq | Albanian |
+| pt | Portuguese (European) |
+| es | Spanish |
+| hr | Croatian |
+| sr | Serbian (Latin script) |
 
 ## Project Structure
 
