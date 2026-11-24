@@ -11,9 +11,9 @@ class FeedbackRequest(BaseModel):
     vote: str = Field(..., pattern="^(like|dislike)$")
     consent: bool
     source_text: str = Field(..., min_length=1, max_length=5000)
-    source_lang: str = Field(..., pattern="^(en|de|gsw|fr|it)$")
+    source_lang: str = Field(..., pattern="^(en|de|gsw|fr|it|rm|sq|pt|es|hr|sr)$")
     translated_text: str = Field(..., min_length=1, max_length=15000)
-    target_lang: str = Field(..., pattern="^(en|de|gsw|fr|it)$")
+    target_lang: str = Field(..., pattern="^(en|de|gsw|fr|it|rm|sq|pt|es|hr|sr)$")
     region: str | None = Field(
         None,
         pattern="^(bern|zurich|basel|stgallen|wallis|luzern)$",

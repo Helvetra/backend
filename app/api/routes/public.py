@@ -17,7 +17,7 @@ from app.core.tiers import Tier, get_tier_config
 from app.models.api_key import ApiKey
 from app.models.subscription import SubscriptionProduct
 from app.models.user import User
-from app.schemas.translate import SUPPORTED_LANGUAGE_CODES
+from app.schemas.translate import SUPPORTED_LANGUAGE_CODES, SUPPORTED_LANGUAGES
 from app.services.stripe_b2b import (
     generate_meter_idempotency_key,
     report_translation_meter_event,
@@ -31,16 +31,6 @@ router = APIRouter()
 
 # Supported Swiss German dialects (same as consumer API)
 SWISS_DIALECTS = {"bern", "zurich", "basel", "stgallen", "wallis", "luzern"}
-
-SUPPORTED_LANGUAGES = [
-    {"code": "de", "name": "German", "native_name": "Deutsch"},
-    {"code": "gsw", "name": "Swiss German", "native_name": "Schwyzerdütsch"},
-    {"code": "fr", "name": "French", "native_name": "Français"},
-    {"code": "it", "name": "Italian", "native_name": "Italiano"},
-    {"code": "en", "name": "English", "native_name": "English"},
-    {"code": "rm", "name": "Romansh", "native_name": "Rumantsch"},
-]
-
 
 # --- Schemas ---
 
@@ -63,7 +53,7 @@ class PublicTranslateRequest(BaseModel):
         description=(
             "ISO 639-1/3 source language code, or `auto` to let the engine "
             "detect the source language. Supported codes: `de`, `gsw`, "
-            "`fr`, `it`, `en`, `rm`."
+            "`fr`, `it`, `en`, `rm`, `sq`, `pt`, `es`, `hr`, `sr`."
         ),
         examples=["gsw"],
     )
@@ -73,7 +63,9 @@ class PublicTranslateRequest(BaseModel):
         max_length=3,
         description=(
             "ISO 639-1/3 target language code. Supported codes: `de`, "
-            "`gsw`, `fr`, `it`, `en`, `rm`. Must differ from `source_lang`."
+            "`gsw`, `fr`, `it`, `en`, `rm`, `sq`, `pt`, `es`, `hr`, `sr`. "
+            "Portuguese is European Portuguese; Serbian is written in Latin "
+            "script. Must differ from `source_lang`."
         ),
         examples=["en"],
     )
@@ -81,8 +73,8 @@ class PublicTranslateRequest(BaseModel):
         default="auto",
         description=(
             "Address formality for languages with a T/V distinction "
-            "(German, French, Italian). One of `auto`, `informal`, "
-            "`formal`. Ignored for English and Swiss German."
+            "(every supported language except English). One of `auto`, "
+            "`informal`, `formal`. Ignored for English."
         ),
         examples=["auto"],
     )

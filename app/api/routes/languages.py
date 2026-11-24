@@ -5,16 +5,9 @@ Returns the list of supported translation languages.
 
 from fastapi import APIRouter
 
-router = APIRouter()
+from app.schemas.translate import SUPPORTED_LANGUAGES
 
-SUPPORTED_LANGUAGES = [
-    {"code": "de", "name": "German", "native_name": "Deutsch"},
-    {"code": "gsw", "name": "Swiss German", "native_name": "Schwyzerdütsch"},
-    {"code": "fr", "name": "French", "native_name": "Français"},
-    {"code": "it", "name": "Italian", "native_name": "Italiano"},
-    {"code": "en", "name": "English", "native_name": "English"},
-    {"code": "rm", "name": "Romansh", "native_name": "Rumantsch"},
-]
+router = APIRouter()
 
 
 @router.get("/languages")

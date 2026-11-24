@@ -19,12 +19,16 @@ LANG_MAP = {
     "de": "de",
     "fr": "fr",
     "it": "it",
-    # langdetect doesn't support Swiss German (gsw) or Romansh (rm)
-    # These fall back to LLM detection
+    "sq": "sq",
+    "pt": "pt",
+    "es": "es",
+    "hr": "hr",
+    # langdetect doesn't support Swiss German (gsw), Romansh (rm) or
+    # Serbian (sr); these fall back to LLM detection
 }
 
 # Reverse mapping for validation
-OUR_CODES = {"en", "de", "fr", "it", "gsw", "rm"}
+OUR_CODES = {"en", "de", "fr", "it", "gsw", "rm", "sq", "pt", "es", "hr", "sr"}
 
 # Minimum text length for reliable detection
 MIN_LENGTH = 20
@@ -38,7 +42,8 @@ def detect_language(text: str) -> str | None:
     Detect language from text.
     Returns language code if detected with confidence, None otherwise.
 
-    Note: Swiss German (gsw) and Romansh (rm) are not supported by langdetect.
+    Note: Swiss German (gsw), Romansh (rm) and Serbian (sr) are not supported
+    by langdetect.
     These should be detected by the LLM.
     """
     if not text or len(text) < MIN_LENGTH:

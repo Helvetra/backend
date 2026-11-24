@@ -3,6 +3,7 @@ Translation endpoint tests.
 Covers input validation, API integration, and output validation.
 """
 
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -360,6 +361,72 @@ class TestTranslateEndpoint:
 
         assert response.status_code == 200
         assert response.json()["data"]["translation"] == "Hello"
+
+
+class TestAddedLanguages:
+    """Albanian, Portuguese, Spanish, Croatian and Serbian as target languages."""
+
+    @pytest.mark.parametrize(
+        ("target", "formal_form", "informal_form"),
+        [
+            ("sq", "ju", "ti"),
+            ("pt", "o senhor/a senhora", "tu"),
+            ("es", "usted/ustedes with su/le", "tú/vosotros with tu/te"),
+            ("hr", "Vi", "ti"),
+            ("sr", "Vi", "ti"),
+            ("rm", "Vus", "ti"),
+        ],
+    )
+    def test_formal_address_reaches_prompt(
+        self, client: TestClient, httpx_mock: HTTPXMock, target, formal_form, informal_form
+    ):
+        """Formal requests pin the target language's formal pronoun in the prompt."""
+        httpx_mock.add_response(json=mock_translation_response("ok"))
+
+        response = client.post(
+            "/api/v1/translate",
+            json={"text": "How are you?", "source_lang": "en",
+                  "target_lang": target, "formality": "formal"},
+        )
+
+        assert response.status_code == 200
+        system_prompt = json.loads(httpx_mock.get_request().content)["messages"][0]["content"]
+        assert f"Use formal address ({formal_form}" in system_prompt
+        assert f"Never use {informal_form}" in system_prompt
+
+    @pytest.mark.parametrize(
+        ("target", "variant_marker"),
+        [("pt", "European Portuguese"), ("sr", "Latin script"), ("hr", "standard Croatian")],
+    )
+    def test_written_standard_reaches_prompt(
+        self, client: TestClient, httpx_mock: HTTPXMock, target, variant_marker
+    ):
+        """Languages with several written standards get the chosen one in the prompt."""
+        httpx_mock.add_response(json=mock_translation_response("ok"))
+
+        client.post(
+            "/api/v1/translate",
+            json={"text": "Hello", "source_lang": "en", "target_lang": target},
+        )
+
+        system_prompt = json.loads(httpx_mock.get_request().content)["messages"][0]["content"]
+        assert variant_marker in system_prompt
+
+    @pytest.mark.parametrize("source", ["sq", "pt", "es", "hr", "sr"])
+    def test_added_languages_accepted_as_source(
+        self, client: TestClient, httpx_mock: HTTPXMock, source
+    ):
+        """Each added language can be translated from."""
+        httpx_mock.add_response(json=mock_translation_response("Hallo"))
+
+        response = client.post(
+            "/api/v1/translate",
+            json={"text": "Olá", "source_lang": source, "target_lang": "de"},
+        )
+
+        assert response.status_code == 200
+        system_prompt = json.loads(httpx_mock.get_request().content)["messages"][0]["content"]
+        assert "Variant:" not in system_prompt
 
 
 class TestPromptStructure:

@@ -138,6 +138,14 @@ class TestFeedbackEndpoint:
         assert response.status_code == 200
         assert response.json()["success"] is True
 
+    @pytest.mark.parametrize("lang", ["rm", "sq", "pt", "es", "hr", "sr"])
+    def test_feedback_added_languages(self, client: TestClient, mock_db, valid_feedback, lang):
+        """Feedback on Romansh and the added languages is accepted."""
+        valid_feedback["target_lang"] = lang
+        response = client.post("/api/v1/feedback", json=valid_feedback)
+
+        assert response.status_code == 200
+
     def test_feedback_gsw_target(self, client: TestClient, mock_db, valid_feedback):
         """Swiss German as target language is accepted."""
         valid_feedback["target_lang"] = "gsw"

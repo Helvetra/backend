@@ -6,8 +6,22 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-# Supported language codes for translation
-SUPPORTED_LANGUAGE_CODES = {"de", "gsw", "fr", "it", "en", "rm"}
+# Languages available for translation, as listed by the languages endpoints.
+SUPPORTED_LANGUAGES = [
+    {"code": "de", "name": "German", "native_name": "Deutsch"},
+    {"code": "gsw", "name": "Swiss German", "native_name": "Schwyzerdütsch"},
+    {"code": "fr", "name": "French", "native_name": "Français"},
+    {"code": "it", "name": "Italian", "native_name": "Italiano"},
+    {"code": "en", "name": "English", "native_name": "English"},
+    {"code": "rm", "name": "Romansh", "native_name": "Rumantsch"},
+    {"code": "sq", "name": "Albanian", "native_name": "Shqip"},
+    {"code": "pt", "name": "Portuguese", "native_name": "Português"},
+    {"code": "es", "name": "Spanish", "native_name": "Español"},
+    {"code": "hr", "name": "Croatian", "native_name": "Hrvatski"},
+    {"code": "sr", "name": "Serbian", "native_name": "Srpski"},
+]
+
+SUPPORTED_LANGUAGE_CODES = {lang["code"] for lang in SUPPORTED_LANGUAGES}
 
 # Supported Swiss German dialects
 SwissDialect = Literal["bern", "zurich", "basel", "stgallen", "wallis", "luzern"]
@@ -24,7 +38,8 @@ class TranslateRequest(BaseModel):
     source_lang: str = Field(..., min_length=2, max_length=4)
     target_lang: str = Field(..., min_length=2, max_length=3)
     formality: Literal["informal", "formal", "auto"] = Field(
-        default="auto", description="Formality level for German translations (du/Sie)"
+        default="auto",
+        description="Formality level for target languages with a T-V distinction (du/Sie, tu/vous)",
     )
     dialect: SwissDialect | None = Field(
         default=None, description="Swiss German dialect (only used when target_lang is gsw)"
